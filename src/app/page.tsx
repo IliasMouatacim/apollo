@@ -47,6 +47,122 @@ export default function Home() {
   const [juiceSearch, setJuiceSearch] = useState("");
   const [isSearchingJuice, setIsSearchingJuice] = useState(false);
   const [selectedJuiceTrack, setSelectedJuiceTrack] = useState<JuiceTrack | null>(null);
+  const [importingAlbumTitle, setImportingAlbumTitle] = useState<string | null>(null);
+
+  // Iconic Juice WRLD Full Discography Presets for 1-Click Batch Import
+  const JUICE_WRLD_ALBUMS = [
+    {
+      title: "Goodbye & Good Riddance",
+      artist: "Juice WRLD",
+      year: 2018,
+      badge: "PLATINUM CLASSIC",
+      coverUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&q=80",
+      tracks: [
+        { title: "Intro", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+        { title: "All Girls Are the Same", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+        { title: "Lucid Dreams", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+        { title: "Lean Wit Me", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+        { title: "Wasted (feat. Lil Uzi Vert)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+        { title: "I'm Still", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
+        { title: "Candles", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+        { title: "Scared of Love", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
+        { title: "Used To", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
+        { title: "Hurt Me", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+        { title: "Black & White", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
+        { title: "Long Gone", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
+        { title: "End of the Road", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
+        { title: "734", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" }
+      ]
+    },
+    {
+      title: "Legends Never Die",
+      artist: "Juice WRLD",
+      year: 2020,
+      badge: "POSTHUMOUS MASTERPIECE",
+      coverUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80",
+      tracks: [
+        { title: "Anxiety - Intro", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+        { title: "Conversations", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+        { title: "Titanic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+        { title: "Bad Energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+        { title: "Right Right", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+        { title: "Blood On My Jeans", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
+        { title: "Smile (with The Weeknd)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+        { title: "Life's a Mess (feat. Halsey)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
+        { title: "Come & Go (with Marshmello)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
+        { title: "Wishing Well", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+        { title: "Screw Juice", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
+        { title: "Up Up and Away", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
+        { title: "Man of the Year", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" }
+      ]
+    },
+    {
+      title: "Death Race for Love",
+      artist: "Juice WRLD",
+      year: 2019,
+      badge: "CHART TOPPER",
+      coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80",
+      tracks: [
+        { title: "Empty", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+        { title: "Maze", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+        { title: "Robbery", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+        { title: "Fast", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+        { title: "Hear Me Calling", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+        { title: "Flaws and Sins", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
+        { title: "Feeling", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+        { title: "Syphilis", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
+        { title: "Who Shot Cupid?", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
+        { title: "Ring Ring (feat. Clever)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
+        { title: "Desire", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
+        { title: "Make Believe", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" }
+      ]
+    },
+    {
+      title: "Vault 999 Grails (Unreleased)",
+      artist: "Juice WRLD",
+      year: 2026,
+      badge: "UNRELEASED GRAILS",
+      coverUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&q=80",
+      tracks: [
+        { title: "Rental (Vault Edit)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
+        { title: "Off The Rip (Gamble)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
+        { title: "Cavalier", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
+        { title: "Biscotti in the Air", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
+        { title: "KTM Drip", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
+        { title: "Iron On Me", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
+        { title: "Double Date", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
+        { title: "Red Moonlight", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" }
+      ]
+    }
+  ];
+
+  const handleBatchImportAlbum = async (albumPreset: typeof JUICE_WRLD_ALBUMS[0]) => {
+    setImportingAlbumTitle(albumPreset.title);
+    try {
+      const payload = albumPreset.tracks.map(t => ({
+        title: t.title,
+        artist: albumPreset.artist,
+        album: albumPreset.title,
+        year: albumPreset.year,
+        url: t.url,
+        cover_url: albumPreset.coverUrl,
+        is_liked: false,
+        plays: 0
+      }));
+
+      const { error } = await supabase.from('songs').insert(payload);
+      if (error) throw error;
+
+      await fetchSongs();
+      alert(`⚡ Successfully imported full album "${albumPreset.title}" (${albumPreset.tracks.length} tracks) to your Apollo Library!`);
+      setActiveTab('my-library');
+    } catch (err: any) {
+      console.error("Batch album import error:", err);
+      alert(`Failed to import album: ${err?.message || JSON.stringify(err)}`);
+    } finally {
+      setImportingAlbumTitle(null);
+    }
+  };
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -575,46 +691,99 @@ export default function Home() {
                 </div>
               )
             ) : (
-              <div>
-                {isSearchingJuice ? (
-                  <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--neon-cyan)' }}>
-                    <div className="animate-spin-slow" style={{ display: 'inline-block', marginBottom: '1rem' }}>
-                      <Radio size={40} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+                {/* 1-CLICK FULL ALBUM IMPORTER PRESETS */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                    <div>
+                      <h3 className="gradient-text-flashy" style={{ fontSize: '1.4rem', fontWeight: 800 }}>
+                        💿 Iconic Juice WRLD Albums (1-Click Importer)
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        Import full studio albums directly into your Apollo Cloud Library in 1 click.
+                      </p>
                     </div>
-                    <p style={{ fontWeight: 600 }}>Fetching tracks from Juice WRLD Vault...</p>
                   </div>
-                ) : (
+
                   <div className={styles.trackGrid}>
-                    {juiceTracks.map((track) => (
-                      <div key={track.id} className={styles.cyberCard}>
+                    {JUICE_WRLD_ALBUMS.map((album) => (
+                      <div key={album.title} className={styles.cyberCard} style={{ background: 'rgba(25, 18, 38, 0.7)' }}>
                         <div className={styles.cardCoverBox}>
-                          <img 
-                            src={track.coverUrl || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
-                            alt={track.name} 
-                            className={styles.cardImage} 
-                          />
-                          <span className={styles.cardBadge}>{track.state || 'VAULT'}</span>
+                          <img src={album.coverUrl} alt={album.title} className={styles.cardImage} />
+                          <span className={styles.cardBadge} style={{ color: 'var(--neon-pink)', borderColor: 'rgba(255,0,127,0.4)' }}>
+                            {album.badge}
+                          </span>
                         </div>
                         
                         <div className={styles.cardInfo}>
-                          <div className={styles.cardTitle}>{track.name}</div>
-                          <div className={styles.cardSub}>Juice WRLD • {track.era}</div>
+                          <div className={styles.cardTitle}>{album.title}</div>
+                          <div className={styles.cardSub}>{album.artist} • {album.year} • {album.tracks.length} Tracks</div>
                         </div>
 
                         <button 
-                          className="btn-cyber-outline" 
-                          style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.78rem', padding: '0.45rem' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJuiceTrackUpload(track);
-                          }}
+                          className="btn-neon" 
+                          style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.78rem', padding: '0.55rem' }}
+                          disabled={importingAlbumTitle === album.title}
+                          onClick={() => handleBatchImportAlbum(album)}
                         >
-                          <Upload size={14} /> Import to Apollo
+                          <Zap size={14} /> {importingAlbumTitle === album.title ? "Importing Album..." : `Import Full Album (${album.tracks.length} Tracks)`}
                         </button>
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
+
+                {/* INDIVIDUAL JUICE TRACKS VAULT SEARCH */}
+                <div>
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
+                      🔥 Vault 999 Track Explorer
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      Search and import individual unreleased grails & studio tracks.
+                    </p>
+                  </div>
+
+                  {isSearchingJuice ? (
+                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--neon-cyan)' }}>
+                      <div className="animate-spin-slow" style={{ display: 'inline-block', marginBottom: '1rem' }}>
+                        <Radio size={40} />
+                      </div>
+                      <p style={{ fontWeight: 600 }}>Fetching tracks from Juice WRLD Vault...</p>
+                    </div>
+                  ) : (
+                    <div className={styles.trackGrid}>
+                      {juiceTracks.map((track) => (
+                        <div key={track.id} className={styles.cyberCard}>
+                          <div className={styles.cardCoverBox}>
+                            <img 
+                              src={track.coverUrl || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                              alt={track.name} 
+                              className={styles.cardImage} 
+                            />
+                            <span className={styles.cardBadge}>{track.state || 'VAULT'}</span>
+                          </div>
+                          
+                          <div className={styles.cardInfo}>
+                            <div className={styles.cardTitle}>{track.name}</div>
+                            <div className={styles.cardSub}>Juice WRLD • {track.era}</div>
+                          </div>
+
+                          <button 
+                            className="btn-cyber-outline" 
+                            style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.78rem', padding: '0.45rem' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJuiceTrackUpload(track);
+                            }}
+                          >
+                            <Upload size={14} /> Import Track
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </section>
@@ -776,34 +945,24 @@ function UploadModal({
   onSuccess: () => void 
 }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [cover, setCover] = useState<File | null>(null);
   
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!file) return alert("Please select an audio file (.mp3 / .wav)");
+    if (files.length === 0) return alert("Please select one or more audio files (.mp3 / .wav)");
     
     // Capture FormData before any await calls
     const formData = new FormData(e.currentTarget);
-    const title = formData.get('title') as string;
-    const artist = formData.get('artist') as string;
-    const album = formData.get('album') as string;
-    const year = formData.get('year') as string;
+    const titleInput = formData.get('title') as string;
+    const artistInput = formData.get('artist') as string;
+    const albumInput = formData.get('album') as string;
+    const yearInput = formData.get('year') as string;
 
     setIsUploading(true);
     
     try {
-      // 1. Upload Audio File
-      const musicPath = `music/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-      const { error: musicError } = await supabase.storage
-        .from('media')
-        .upload(musicPath, file);
-        
-      if (musicError) throw musicError;
-      
-      const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
-
-      // 2. Upload Cover Art
+      // 1. Upload Cover Art if provided
       let coverUrl = selectedTrack?.coverUrl || null;
       if (cover) {
         const coverPath = `covers/${Date.now()}-${cover.name.replace(/\s+/g, '_')}`;
@@ -817,15 +976,45 @@ function UploadModal({
         }
       }
 
-      // 3. Insert into Supabase
-      const { error: dbError } = await supabase.from('songs').insert({
-        title,
-        artist,
-        album: album || null,
-        year: year ? parseInt(year, 10) : null,
-        url: musicUrl,
-        cover_url: coverUrl,
-      });
+      const songEntriesToInsert: Array<{
+        title: string;
+        artist: string;
+        album: string | null;
+        year: number | null;
+        url: string;
+        cover_url: string | null;
+      }> = [];
+
+      // 2. Loop through each audio file selected
+      for (let i = 0; i < files.length; i++) {
+        const audioFile = files[i];
+        const musicPath = `music/${Date.now()}-${i}-${audioFile.name.replace(/\s+/g, '_')}`;
+        
+        const { error: musicError } = await supabase.storage
+          .from('media')
+          .upload(musicPath, audioFile);
+          
+        if (musicError) throw musicError;
+        
+        const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
+
+        // Deduce song title: use custom title if single file, else cleaning filename
+        const songTitle = files.length === 1 
+          ? (titleInput || audioFile.name.replace(/\.[^/.]+$/, ""))
+          : audioFile.name.replace(/\.[^/.]+$/, "");
+
+        songEntriesToInsert.push({
+          title: songTitle,
+          artist: artistInput || "Juice WRLD",
+          album: albumInput || null,
+          year: yearInput ? parseInt(yearInput, 10) : null,
+          url: musicUrl,
+          cover_url: coverUrl
+        });
+      }
+
+      // 3. Batch insert all songs into Supabase Cloud Database
+      const { error: dbError } = await supabase.from('songs').insert(songEntriesToInsert);
 
       if (dbError) throw dbError;
 
@@ -844,7 +1033,7 @@ function UploadModal({
       <div className={styles.modalWindow}>
         <div className={styles.modalHead}>
           <h3 className="gradient-text-flashy">
-            {selectedTrack ? `Import "${selectedTrack.name}"` : "Upload Music Track"}
+            {selectedTrack ? `Import "${selectedTrack.name}"` : files.length > 1 ? `Batch Upload Album (${files.length} Files)` : "Upload Music Track"}
           </h3>
           <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={onClose}>
             <X size={18} />
@@ -854,25 +1043,34 @@ function UploadModal({
         <form onSubmit={handleUpload}>
           <div className={styles.dropzoneCyber} onClick={() => document.getElementById('musicFileInput')?.click()}>
             <Music size={36} style={{ color: 'var(--neon-cyan)', margin: '0 auto 0.75rem' }} />
-            <div style={{ fontWeight: 600, color: '#fff' }}>{file ? file.name : "Click to select MP3 / WAV audio file"}</div>
+            <div style={{ fontWeight: 600, color: '#fff' }}>
+              {files.length > 0 
+                ? `${files.length} Audio File(s) Selected (${files.map(f => f.name).join(", ").slice(0, 45)}...)` 
+                : "Click to select MP3 / WAV audio file(s) (Select multiple for full album)"}
+            </div>
             <input 
               id="musicFileInput"
               type="file" 
               accept="audio/*" 
+              multiple
               style={{ display: 'none' }}
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                if (e.target.files) {
+                  setFiles(Array.from(e.target.files));
+                }
+              }}
               required
             />
           </div>
 
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
-              Cover Art (Optional)
+              Album Cover Art (Optional)
             </label>
             <div className={styles.dropzoneCyber} style={{ padding: '1rem' }} onClick={() => document.getElementById('coverFileInput')?.click()}>
               <ImageIcon size={22} style={{ color: 'var(--neon-pink)', margin: '0 auto 0.4rem' }} />
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                {cover ? cover.name : selectedTrack?.coverUrl ? "Using Juice WRLD Vault Cover Art" : "Click to select image cover"}
+                {cover ? cover.name : selectedTrack?.coverUrl ? "Using Juice WRLD Vault Cover Art" : "Click to select album cover artwork"}
               </div>
               <input 
                 id="coverFileInput"
@@ -884,25 +1082,27 @@ function UploadModal({
             </div>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Title</label>
-            <input 
-              name="title" 
-              className="input-cyber" 
-              placeholder="Song Title" 
-              required 
-              defaultValue={selectedTrack?.name || file?.name.replace(/\.[^/.]+$/, "") || ""} 
-            />
-          </div>
+          {files.length <= 1 && (
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Title</label>
+              <input 
+                name="title" 
+                className="input-cyber" 
+                placeholder="Song Title" 
+                required={files.length === 1}
+                defaultValue={selectedTrack?.name || files[0]?.name.replace(/\.[^/.]+$/, "") || ""} 
+              />
+            </div>
+          )}
           
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Artist</label>
             <input 
               name="artist" 
               className="input-cyber" 
-              placeholder="Artist Name" 
+              placeholder="Artist Name (e.g. Juice WRLD)" 
               required 
-              defaultValue={selectedTrack ? "Juice WRLD" : ""} 
+              defaultValue={selectedTrack ? "Juice WRLD" : "Juice WRLD"} 
             />
           </div>
 
@@ -929,7 +1129,7 @@ function UploadModal({
           </div>
 
           <button type="submit" className="btn-neon" style={{ width: '100%' }} disabled={isUploading}>
-            {isUploading ? "Uploading Audio Engine..." : "Add to Apollo Library"}
+            {isUploading ? `Uploading ${files.length} Track(s) to Apollo Cloud...` : files.length > 1 ? `Upload ${files.length} Tracks (Full Album)` : "Add to Apollo Library"}
           </button>
         </form>
       </div>
