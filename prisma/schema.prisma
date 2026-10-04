@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Song {
+  id        String   @id @default(cuid())
+  title     String
+  artist    String
+  album     String?
+  year      Int?
+  url       String   // The path or url where the music file is stored
+  coverUrl  String?  // The path to the album art
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
