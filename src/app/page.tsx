@@ -39,6 +39,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites'>('my-library');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
+  const [streamCount, setStreamCount] = useState<number>(0);
   
   // Juice WRLD API state
   const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
@@ -53,6 +54,16 @@ export default function Home() {
   useEffect(() => {
     fetchSongs();
     fetchJuiceTracks("Lucid Dreams");
+
+    try {
+      const savedLikes = localStorage.getItem('apollo_liked_songs');
+      if (savedLikes) setLikedSongIds(JSON.parse(savedLikes));
+
+      const savedStreams = localStorage.getItem('apollo_stream_count');
+      if (savedStreams) setStreamCount(parseInt(savedStreams, 10));
+    } catch (e) {
+      console.error("Failed to load account stats", e);
+    }
   }, []);
 
   const fetchSongs = async () => {
@@ -94,9 +105,13 @@ export default function Home() {
 
   const toggleLike = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setLikedSongIds(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+    setLikedSongIds(prev => {
+      const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
+      try {
+        localStorage.setItem('apollo_liked_songs', JSON.stringify(next));
+      } catch (err) {}
+      return next;
+    });
   };
 
   const playSong = (song: Song) => {
@@ -106,6 +121,16 @@ export default function Home() {
     }
     setCurrentSong(song);
     setIsPlaying(true);
+
+    // Increment account stream count
+    setStreamCount(prev => {
+      const next = prev + 1;
+      try {
+        localStorage.setItem('apollo_stream_count', next.toString());
+      } catch (err) {}
+      return next;
+    });
+
     if (audioRef.current) {
       audioRef.current.src = song.url;
       audioRef.current.play();
@@ -377,15 +402,15 @@ export default function Home() {
             <div className={styles.statsRow}>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>LIKES</span>
-                <span className={styles.statVal}>{likedSongIds.length + 247}</span>
+                <span className={styles.statVal}>{likedSongIds.length}</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>TRACKS</span>
-                <span className={styles.statVal}>{songs.length + 363}</span>
+                <span className={styles.statVal}>{songs.length}</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>TOTAL STREAMS</span>
-                <span className={styles.statVal}>1,420</span>
+                <span className={styles.statVal}>{streamCount.toLocaleString()}</span>
               </div>
             </div>
 
