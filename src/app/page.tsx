@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, Upload, Music, Plus, X, 
   Image as ImageIcon, Search, Disc, Flame, Sparkles, Maximize2, Zap, 
-  Radio
+  Radio, Heart, List, Grid, Clock, BarChart3, Bookmark, Compass, ShieldCheck
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import styles from "./page.module.css";
@@ -17,6 +17,7 @@ type Song = {
   year: number | null;
   url: string;
   cover_url: string | null;
+  created_at?: string;
 };
 
 type JuiceTrack = {
@@ -35,7 +36,9 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld'>('my-library');
+  const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites'>('my-library');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   
   // Juice WRLD API state
   const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
@@ -87,6 +90,13 @@ export default function Home() {
     } finally {
       setIsSearchingJuice(false);
     }
+  };
+
+  const toggleLike = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setLikedSongIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
 
   const playSong = (song: Song) => {
@@ -154,6 +164,9 @@ export default function Home() {
   };
 
   const activeFeaturedSong = currentSong || (songs.length > 0 ? songs[0] : null);
+  const displayedSongs = activeTab === 'favorites' 
+    ? songs.filter(s => likedSongIds.includes(s.id))
+    : songs;
 
   return (
     <>
@@ -166,9 +179,9 @@ export default function Home() {
       <div className="noise-overlay"></div>
 
       <div className={styles.mainApp}>
-        {/* Left Cyber Dock Sidebar */}
+        {/* MELO Structured Cyber Dock Sidebar */}
         <aside className={styles.cyberDock}>
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className={styles.brandWrap}>
               <div className={styles.brandIcon}>
                 <Radio color="white" size={24} />
@@ -176,13 +189,14 @@ export default function Home() {
               <div className={`${styles.brandText} gradient-text-flashy`}>APOLLO</div>
             </div>
 
+            {/* MAIN NAVIGATION */}
             <nav className={styles.navSection}>
-              <div className={styles.navLabel}>Sound Deck</div>
+              <div className={styles.navLabel}>MAIN</div>
               <button 
                 className={`${styles.navItem} ${activeTab === 'my-library' ? styles.navItemActive : ''}`}
                 onClick={() => setActiveTab('my-library')}
               >
-                <Disc size={18} /> Library
+                <Disc size={18} /> Feed & Library
                 <span className={styles.dockBadge}>{songs.length}</span>
               </button>
 
@@ -198,9 +212,42 @@ export default function Home() {
                 className={styles.navItem}
                 onClick={() => setIsVisualizerOpen(true)}
               >
-                <Zap size={18} style={{ color: 'var(--neon-amber)' }} /> Visualizer Studio
+                <BarChart3 size={18} style={{ color: 'var(--neon-cyan)' }} /> Visualizer Studio
               </button>
             </nav>
+
+            {/* YOUR MUSIC */}
+            <nav className={styles.navSection}>
+              <div className={styles.navLabel}>YOUR MUSIC</div>
+              <button 
+                className={`${styles.navItem} ${activeTab === 'favorites' ? styles.navItemActive : ''}`}
+                onClick={() => setActiveTab('favorites')}
+              >
+                <Heart size={18} style={{ color: 'var(--neon-pink)' }} /> Favourites
+                <span className={styles.dockBadge}>{likedSongIds.length}</span>
+              </button>
+
+              <button className={styles.navItem} onClick={() => setActiveTab('my-library')}>
+                <Clock size={18} /> Recently Played
+              </button>
+            </nav>
+
+            {/* VIBE TAGS */}
+            <div className={styles.navSection}>
+              <div className={styles.navLabel}>GENRES & PLAYLISTS</div>
+              <div className={styles.vibeTag}>
+                <span className={styles.vibeDot} style={{ color: '#ff007f' }}></span> Unreleased 999
+              </div>
+              <div className={styles.vibeTag}>
+                <span className={styles.vibeDot} style={{ color: '#00f0ff' }}></span> Synthwave & Cyber
+              </div>
+              <div className={styles.vibeTag}>
+                <span className={styles.vibeDot} style={{ color: '#ffaa00' }}></span> Trap & Hip-Hop
+              </div>
+              <div className={styles.vibeTag}>
+                <span className={styles.vibeDot} style={{ color: '#00ffaa' }}></span> Chill & Relax
+              </div>
+            </div>
           </div>
 
           <div className={styles.dockFooter}>
@@ -226,7 +273,7 @@ export default function Home() {
               <Search size={18} style={{ color: 'var(--neon-cyan)' }} />
               <input 
                 type="text" 
-                placeholder="Search tracks, vault audio, eras..." 
+                placeholder="Search by artists, songs, or vault albums..." 
                 value={activeTab === 'juicewrld' ? juiceSearch : ''}
                 onChange={(e) => {
                   if (activeTab === 'juicewrld') {
@@ -248,100 +295,209 @@ export default function Home() {
 
             <div className={styles.topActions}>
               <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
-                <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> FX Deck
+                <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> FX Studio
               </button>
               <button className="btn-neon" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
-                <Plus size={16} /> Add Song
+                <Plus size={16} /> Add Track
               </button>
             </div>
           </header>
 
-          {/* Featured Stage / Hero Vinyl Showcase */}
-          <section className={styles.heroStage}>
-            <div className={styles.heroContent}>
-              <div className={styles.heroTag}>
-                <Sparkles size={14} /> High Fidelity Audio Platform
-              </div>
-              <h1 className={`${styles.heroTitle} gradient-text-flashy`}>
-                {activeFeaturedSong ? activeFeaturedSong.title : "Immersive Sound System"}
-              </h1>
-              <p className={styles.heroSub}>
-                {activeFeaturedSong 
-                  ? `Now ready: ${activeFeaturedSong.artist} • ${activeFeaturedSong.album || 'Apollo Original Stream'}` 
-                  : "Experience studio quality audio playback, custom library uploads, and Juice WRLD Vault integration."}
-              </p>
-              
-              {activeFeaturedSong && (
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button className="btn-neon" onClick={() => playSong(activeFeaturedSong)}>
-                    {currentSong?.id === activeFeaturedSong.id && isPlaying ? <Pause size={18} /> : <Play size={18} fill="white" />}
-                    {currentSong?.id === activeFeaturedSong.id && isPlaying ? "Pause Audio" : "Play Now"}
-                  </button>
-                  <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
-                    <Maximize2 size={16} /> Open Studio Visualizer
-                  </button>
+          {/* MELO-INSPIRED HERO ROW (SPLIT CARDS) */}
+          <section className={styles.heroRowSplit}>
+            {/* Left Card: Playlist of the Day */}
+            <div className={styles.heroCardLeft}>
+              <div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  {songs.length} tracks • Hi-Res Quality
                 </div>
+                <h3 className="gradient-text-flashy" style={{ fontSize: '1.4rem', fontWeight: 800 }}>
+                  Playlist of the day
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1rem 0' }}>
+                <img 
+                  src={activeFeaturedSong?.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                  alt="Spotlight" 
+                  style={{ width: '130px', height: '130px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 12px 30px rgba(0,0,0,0.6)', transform: 'rotate(-4deg)' }} 
+                />
+              </div>
+
+              {activeFeaturedSong && (
+                <button className="btn-cyber-outline" style={{ width: '100%', fontSize: '0.8rem' }} onClick={() => playSong(activeFeaturedSong)}>
+                  <Play size={14} fill="currentColor" /> Play Spotlight
+                </button>
               )}
             </div>
 
-            {/* Vinyl Record Display */}
-            <div className={styles.vinylWrapper}>
-              <img 
-                src={activeFeaturedSong?.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
-                alt="Album Cover" 
-                className={styles.albumCardCover} 
-              />
-              <div className={`${styles.vinylDisc} ${isPlaying ? styles.isVinylSpinning : ''}`}>
-                <div className={styles.vinylCenterLabel}>
-                  <div className={styles.vinylHole}></div>
+            {/* Right Card: Featured Banner Deck */}
+            <div className={styles.heroCardRight}>
+              <div className={styles.watermarkText}>
+                {activeFeaturedSong ? activeFeaturedSong.title : "APOLLO 999"}
+              </div>
+
+              <div style={{ position: 'relative', zIndex: 2 }}>
+                <div className={styles.heroTag}>
+                  <Flame size={14} /> Featured Stream
+                </div>
+                <h1 className={styles.heroTitle}>
+                  {activeFeaturedSong ? activeFeaturedSong.title : "Between Death and Dreams"}
+                </h1>
+                <p className={styles.heroSub}>
+                  {activeFeaturedSong ? `${activeFeaturedSong.artist} • ${activeFeaturedSong.album || 'Juice WRLD Era'}` : "Brand of Sacrifice • April 2026"}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
+                {activeFeaturedSong && (
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button className="btn-neon" onClick={() => playSong(activeFeaturedSong)}>
+                      {currentSong?.id === activeFeaturedSong.id && isPlaying ? <Pause size={18} /> : <Play size={18} fill="white" />}
+                      {currentSong?.id === activeFeaturedSong.id && isPlaying ? "Pause Track" : "Play Stream"}
+                    </button>
+                    <button 
+                      className="btn-cyber-outline" 
+                      onClick={() => toggleLike(activeFeaturedSong.id)}
+                      style={{ color: likedSongIds.includes(activeFeaturedSong.id) ? 'var(--neon-pink)' : 'inherit' }}
+                    >
+                      <Heart size={16} fill={likedSongIds.includes(activeFeaturedSong.id) ? "var(--neon-pink)" : "none"} />
+                    </button>
+                  </div>
+                )}
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'Space Grotesk' }}>
+                  {formatTime(progress)} / {formatTime(duration)}
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Content Track Grid */}
-          <section className={styles.gridSection}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>
-                {activeTab === 'my-library' ? <Disc style={{ color: 'var(--neon-cyan)' }} /> : <Flame style={{ color: 'var(--neon-pink)' }} />}
-                {activeTab === 'my-library' ? "Your Music Collection" : "Juice WRLD Unreleased Vault"}
-              </h2>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button 
-                  className={`btn-cyber-outline ${activeTab === 'my-library' ? styles.navItemActive : ''}`}
-                  onClick={() => setActiveTab('my-library')}
-                  style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }}
-                >
-                  Library ({songs.length})
-                </button>
-                <button 
-                  className={`btn-cyber-outline ${activeTab === 'juicewrld' ? styles.navItemActive : ''}`}
-                  onClick={() => setActiveTab('juicewrld')}
-                  style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }}
-                >
-                  Vault 999
-                </button>
+          {/* STUDIO STATS & PROMO ROW */}
+          <section style={{ margin: '0 2.5rem 1rem 2.5rem' }}>
+            <div className={styles.statsRow}>
+              <div className={styles.statBox}>
+                <span className={styles.statLbl}>LIKES</span>
+                <span className={styles.statVal}>{likedSongIds.length + 247}</span>
+              </div>
+              <div className={styles.statBox}>
+                <span className={styles.statLbl}>TRACKS</span>
+                <span className={styles.statVal}>{songs.length + 363}</span>
+              </div>
+              <div className={styles.statBox}>
+                <span className={styles.statLbl}>TOTAL STREAMS</span>
+                <span className={styles.statVal}>1,420</span>
               </div>
             </div>
 
-            {activeTab === 'my-library' ? (
-              songs.length === 0 ? (
+            <div className={styles.promoBanner}>
+              <div>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '0.2rem' }}>Check the power of Apollo 999</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Enjoy uninterrupted music streaming & Juice WRLD Vault integration.</p>
+              </div>
+              <button className="btn-neon" style={{ fontSize: '0.78rem', padding: '0.5rem 1.2rem' }} onClick={() => setIsVisualizerOpen(true)}>
+                <Zap size={14} /> Open Studio
+              </button>
+            </div>
+          </section>
+
+          {/* Content Track Section */}
+          <section className={styles.gridSection}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                {activeTab === 'my-library' && <Disc style={{ color: 'var(--neon-cyan)' }} />}
+                {activeTab === 'juicewrld' && <Flame style={{ color: 'var(--neon-pink)' }} />}
+                {activeTab === 'favorites' && <Heart style={{ color: 'var(--neon-pink)' }} />}
+                {activeTab === 'my-library' ? "Your Music Collection" : activeTab === 'juicewrld' ? "Juice WRLD Vault 999" : "Your Favorites"}
+              </h2>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className={styles.viewToggler}>
+                  <button 
+                    className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+                    onClick={() => setViewMode('list')}
+                    title="List View"
+                  >
+                    <List size={16} />
+                  </button>
+                  <button 
+                    className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.viewBtnActive : ''}`}
+                    onClick={() => setViewMode('grid')}
+                    title="Grid View"
+                  >
+                    <Grid size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {activeTab === 'my-library' || activeTab === 'favorites' ? (
+              displayedSongs.length === 0 ? (
                 <div className="cyber-panel" style={{ padding: '3rem', textAlign: 'center', margin: '2rem 0' }}>
                   <Music size={48} style={{ color: 'var(--neon-pink)', margin: '0 auto 1rem' }} />
-                  <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No Songs Uploaded Yet</h3>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Your sound bank is empty. Upload your first track or import from the Juice WRLD Vault.</p>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-                    <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
-                      <Upload size={16} /> Upload Audio File
-                    </button>
-                    <button className="btn-cyber-outline" onClick={() => setActiveTab('juicewrld')}>
-                      <Flame size={16} /> Explore Vault
-                    </button>
-                  </div>
+                  <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                    {activeTab === 'favorites' ? "No Favorites Saved Yet" : "No Songs Uploaded Yet"}
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                    {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Upload your local audio files or explore the Juice WRLD Vault."}
+                  </p>
+                  <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
+                    <Upload size={16} /> Upload Audio File
+                  </button>
+                </div>
+              ) : viewMode === 'list' ? (
+                /* MELO DETAILED TABLE LIST VIEW */
+                <div className={styles.trackTable}>
+                  {displayedSongs.map((song, index) => {
+                    const isPlayingThis = currentSong?.id === song.id && isPlaying;
+                    const isLiked = likedSongIds.includes(song.id);
+                    return (
+                      <div 
+                        key={song.id} 
+                        className={`${styles.tableRow} ${currentSong?.id === song.id ? styles.tableRowActive : ''}`}
+                        onClick={() => playSong(song)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, width: '20px' }}>{index + 1}</span>
+                          <img 
+                            src={song.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                            alt={song.title} 
+                            className={styles.tableThumb} 
+                          />
+                        </div>
+
+                        <div>
+                          <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{song.title}</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{song.artist}</div>
+                        </div>
+
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {song.album || 'Single Release'}
+                        </div>
+
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {song.year || '2026'}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.85rem' }}>
+                          <button 
+                            className="btn-cyber-outline" 
+                            style={{ padding: '0.4rem', border: 'none', background: 'transparent' }}
+                            onClick={(e) => toggleLike(song.id, e)}
+                          >
+                            <Heart size={18} color={isLiked ? 'var(--neon-pink)' : 'var(--text-muted)'} fill={isLiked ? 'var(--neon-pink)' : 'none'} />
+                          </button>
+                          <button className="btn-neon" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
+                            {isPlayingThis ? <Pause size={14} /> : <Play size={14} fill="white" />}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
+                /* 3D CYBER CARD GRID VIEW */
                 <div className={styles.trackGrid}>
-                  {songs.map((song) => {
+                  {displayedSongs.map((song) => {
                     const isPlayingThis = currentSong?.id === song.id && isPlaying;
                     return (
                       <div 
@@ -728,7 +884,7 @@ function UploadModal({
                 name="year" 
                 type="number" 
                 className="input-cyber" 
-                placeholder="2024" 
+                placeholder="2026" 
                 defaultValue={selectedTrack?.releaseDate ? new Date(selectedTrack.releaseDate).getFullYear() || "" : ""} 
               />
             </div>
