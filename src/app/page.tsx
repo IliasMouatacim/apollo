@@ -1077,6 +1077,14 @@ function UploadModal({
     }
   }, [files, selectedTrack]);
 
+function sanitizeStorageKey(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_.-]/g, '_')
+    .replace(/_+/g, '_');
+}
+
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (files.length === 0) return alert("Please select one or more audio files (.mp3 / .wav)");
@@ -1094,7 +1102,8 @@ function UploadModal({
       // 1. Upload Fallback Cover Art if provided via file input
       let globalCoverUrl = selectedTrack?.coverUrl || null;
       if (cover) {
-        const coverPath = `covers/${Date.now()}-global-${cover.name.replace(/\s+/g, '_')}`;
+        const cleanCoverName = sanitizeStorageKey(cover.name);
+        const coverPath = `covers/${Date.now()}-global-${cleanCoverName}`;
         const { error: coverError } = await supabase.storage
           .from('media')
           .upload(coverPath, cover);
@@ -1117,9 +1126,10 @@ function UploadModal({
       // 2. Loop through each audio file and upload individual audio & embedded cover art
       for (let i = 0; i < parsedTracks.length; i++) {
         const item = parsedTracks[i];
+        const cleanFileName = sanitizeStorageKey(item.file.name);
         
-        // Upload Audio File
-        const musicPath = `music/${Date.now()}-${i}-${item.file.name.replace(/\s+/g, '_')}`;
+        // Upload Audio File with sanitized storage key
+        const musicPath = `music/${Date.now()}-${i}-${cleanFileName}`;
         const { error: musicError } = await supabase.storage
           .from('media')
           .upload(musicPath, item.file);
