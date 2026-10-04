@@ -168,9 +168,69 @@ export default function Home() {
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
+  const [isDraggingOverPage, setIsDraggingOverPage] = useState(false);
+
   useEffect(() => {
     fetchSongs();
     fetchJuiceTracks("Lucid Dreams");
+  }, []);
+
+  useEffect(() => {
+    let dragCounter = 0;
+
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter++;
+      if (e.dataTransfer?.types?.includes('Files')) {
+        setIsDraggingOverPage(true);
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter--;
+      if (dragCounter <= 0) {
+        setIsDraggingOverPage(false);
+        dragCounter = 0;
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDraggingOverPage(false);
+      dragCounter = 0;
+
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const audioFiles = Array.from(e.dataTransfer.files).filter(file => 
+          file.type.startsWith('audio/') || /\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(file.name)
+        );
+
+        if (audioFiles.length > 0) {
+          setDroppedFiles(audioFiles);
+          setSelectedJuiceTrack(null);
+          setIsModalOpen(true);
+        } else {
+          alert("Please drop valid audio files (.mp3, .wav, .flac, .m4a)");
+        }
+      }
+    };
+
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('drop', handleDrop);
+    };
   }, []);
 
   const fetchSongs = async () => {
@@ -327,6 +387,23 @@ export default function Home() {
 
   return (
     <>
+      {/* Full-Page Cyber Drag & Drop Overlay */}
+      {isDraggingOverPage && (
+        <div className={styles.fullPageDragOverlay}>
+          <div className={styles.dragOverlayContent}>
+            <div className={styles.dragPulseIcon}>
+              <Upload size={54} style={{ color: 'var(--neon-cyan)' }} />
+            </div>
+            <h2 className="gradient-text-flashy" style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0 }}>
+              DROP AUDIO FILES TO IMPORT
+            </h2>
+            <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Drop single tracks or full album folders directly into Apollo Audio Engine
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Aurora Ambient Background */}
       <div className="aurora-bg">
         <div className="aurora-blob aurora-blob-1"></div>
@@ -914,13 +991,16 @@ export default function Home() {
       {isModalOpen && (
         <UploadModal 
           selectedTrack={selectedJuiceTrack}
+          initialFiles={droppedFiles}
           onClose={() => {
             setIsModalOpen(false);
             setSelectedJuiceTrack(null);
+            setDroppedFiles([]);
           }} 
           onSuccess={() => {
             setIsModalOpen(false);
             setSelectedJuiceTrack(null);
+            setDroppedFiles([]);
             fetchSongs();
           }} 
         />
@@ -937,17 +1017,26 @@ export default function Home() {
 
 function UploadModal({ 
   selectedTrack, 
+  initialFiles = [],
   onClose, 
   onSuccess 
 }: { 
   selectedTrack?: JuiceTrack | null, 
+  initialFiles?: File[],
   onClose: () => void, 
   onSuccess: () => void 
 }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>(initialFiles);
   const [cover, setCover] = useState<File | null>(null);
+  const [isDropzoneActive, setIsDropzoneActive] = useState(false);
   
+  useEffect(() => {
+    if (initialFiles.length > 0) {
+      setFiles(initialFiles);
+    }
+  }, [initialFiles]);
+
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (files.length === 0) return alert("Please select one or more audio files (.mp3 / .wav)");
@@ -1041,12 +1130,27 @@ function UploadModal({
         </div>
         
         <form onSubmit={handleUpload}>
-          <div className={styles.dropzoneCyber} onClick={() => document.getElementById('musicFileInput')?.click()}>
+          <div 
+            className={`${styles.dropzoneCyber} ${isDropzoneActive ? styles.dropzoneActive : ''}`} 
+            onClick={() => document.getElementById('musicFileInput')?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDropzoneActive(true); }}
+            onDragLeave={() => setIsDropzoneActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDropzoneActive(false);
+              if (e.dataTransfer.files) {
+                const dropped = Array.from(e.dataTransfer.files).filter(f => 
+                  f.type.startsWith('audio/') || /\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name)
+                );
+                if (dropped.length > 0) setFiles(dropped);
+              }
+            }}
+          >
             <Music size={36} style={{ color: 'var(--neon-cyan)', margin: '0 auto 0.75rem' }} />
             <div style={{ fontWeight: 600, color: '#fff' }}>
               {files.length > 0 
-                ? `${files.length} Audio File(s) Selected (${files.map(f => f.name).join(", ").slice(0, 45)}...)` 
-                : "Click to select MP3 / WAV audio file(s) (Select multiple for full album)"}
+                ? `${files.length} Audio File(s) Ready (${files.map(f => f.name).join(", ").slice(0, 40)}...)` 
+                : "Drag & drop MP3 / WAV audio file(s) here or click to select"}
             </div>
             <input 
               id="musicFileInput"
@@ -1059,7 +1163,7 @@ function UploadModal({
                   setFiles(Array.from(e.target.files));
                 }
               }}
-              required
+              required={files.length === 0}
             />
           </div>
 
