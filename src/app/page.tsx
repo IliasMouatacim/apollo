@@ -1044,6 +1044,11 @@ function UploadModal({
   
   const [parsedTracks, setParsedTracks] = useState<ParsedTrackItem[]>([]);
   const [isParsingMetadata, setIsParsingMetadata] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ completed: number; total: number; currentName: string }>({
+    completed: 0,
+    total: 0,
+    currentName: ""
+  });
 
   useEffect(() => {
     if (initialFiles.length > 0) {
@@ -1077,13 +1082,13 @@ function UploadModal({
     }
   }, [files, selectedTrack]);
 
-function sanitizeStorageKey(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9_.-]/g, '_')
-    .replace(/_+/g, '_');
-}
+  function sanitizeStorageKey(name: string): string {
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_.-]/g, '_')
+      .replace(/_+/g, '_');
+  }
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1097,7 +1102,8 @@ function sanitizeStorageKey(name: string): string {
     const globalYear = formData.get('year') as string;
 
     setIsUploading(true);
-    
+    setUploadProgress({ completed: 0, total: parsedTracks.length, currentName: "Initializing batch engine..." });
+
     try {
       // 1. Upload Fallback Cover Art if provided via file input
       let globalCoverUrl = selectedTrack?.coverUrl || null;
@@ -1106,7 +1112,7 @@ function sanitizeStorageKey(name: string): string {
         const coverPath = `covers/${Date.now()}-global-${cleanCoverName}`;
         const { error: coverError } = await supabase.storage
           .from('media')
-          .upload(coverPath, cover);
+          .upload(coverPath, cover, { upsert: true });
           
         if (!coverError) {
           const { data: coverUrlData } = supabase.storage.from('media').getPublicUrl(coverPath);
@@ -1114,6 +1120,7 @@ function sanitizeStorageKey(name: string): string {
         }
       }
 
+      let completedCount = 0;
       const songEntriesToInsert: Array<{
         title: string;
         artist: string;
@@ -1123,65 +1130,106 @@ function sanitizeStorageKey(name: string): string {
         cover_url: string | null;
       }> = [];
 
-      // 2. Loop through each audio file and upload individual audio & embedded cover art
-      for (let i = 0; i < parsedTracks.length; i++) {
-        const item = parsedTracks[i];
-        const cleanFileName = sanitizeStorageKey(item.file.name);
-        
-        // Upload Audio File with sanitized storage key
-        const musicPath = `music/${Date.now()}-${i}-${cleanFileName}`;
-        const { error: musicError } = await supabase.storage
-          .from('media')
-          .upload(musicPath, item.file);
-          
-        if (musicError) throw musicError;
-        
-        const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
+      // Concurrent Parallel Processing Pool (5 parallel upload streams)
+      const CONCURRENCY_LIMIT = 5;
 
-        // Upload Individual Track Embedded Artwork if present
-        let trackCoverUrl = globalCoverUrl;
-        if (item.coverBlob) {
-          try {
-            const coverPath = `covers/${Date.now()}-${i}-embedded.jpg`;
-            const { error: itemCoverErr } = await supabase.storage
-              .from('media')
-              .upload(coverPath, item.coverBlob, { contentType: item.coverBlob.type || 'image/jpeg' });
+      const processTrack = async (item: ParsedTrackItem, i: number) => {
+        try {
+          const cleanFileName = sanitizeStorageKey(item.file.name);
+          const musicPath = `music/${Date.now()}-${i}-${cleanFileName}`;
+          
+          const { error: musicError } = await supabase.storage
+            .from('media')
+            .upload(musicPath, item.file, { upsert: true });
             
-            if (!itemCoverErr) {
-              const { data: itemCoverData } = supabase.storage.from('media').getPublicUrl(coverPath);
-              trackCoverUrl = itemCoverData.publicUrl;
+          if (musicError) {
+            console.error(`Error uploading file ${item.title}:`, musicError);
+            return null;
+          }
+          
+          const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
+
+          let trackCoverUrl = globalCoverUrl;
+          if (item.coverBlob) {
+            try {
+              const coverPath = `covers/${Date.now()}-${i}-embedded.jpg`;
+              const { error: itemCoverErr } = await supabase.storage
+                .from('media')
+                .upload(coverPath, item.coverBlob, { contentType: item.coverBlob.type || 'image/jpeg', upsert: true });
+              
+              if (!itemCoverErr) {
+                const { data: itemCoverData } = supabase.storage.from('media').getPublicUrl(coverPath);
+                trackCoverUrl = itemCoverData.publicUrl;
+              }
+            } catch (err) {
+              console.warn("Failed to upload embedded cover for track:", item.title, err);
             }
-          } catch (err) {
-            console.warn("Failed to upload embedded cover for track:", item.title, err);
+          }
+
+          const finalTitle = item.title || (files.length === 1 && globalTitle ? globalTitle : item.file.name.replace(/\.[^/.]+$/, ""));
+          const finalArtist = item.artist || globalArtist || "Juice WRLD";
+          const finalAlbum = item.album || globalAlbum || null;
+          const finalYear = item.year || (globalYear ? parseInt(globalYear, 10) : null);
+
+          completedCount++;
+          setUploadProgress({
+            completed: completedCount,
+            total: parsedTracks.length,
+            currentName: finalTitle
+          });
+
+          return {
+            title: finalTitle,
+            artist: finalArtist,
+            album: finalAlbum,
+            year: finalYear,
+            url: musicUrl,
+            cover_url: trackCoverUrl
+          };
+        } catch (err) {
+          console.error("Track upload failed:", item.title, err);
+          completedCount++;
+          setUploadProgress({
+            completed: completedCount,
+            total: parsedTracks.length,
+            currentName: item.title
+          });
+          return null;
+        }
+      };
+
+      // Queue worker logic
+      const queue = [...parsedTracks.map((item, index) => ({ item, index }))];
+      const validResults: Array<typeof songEntriesToInsert[0]> = [];
+
+      const worker = async () => {
+        while (queue.length > 0) {
+          const next = queue.shift();
+          if (next) {
+            const res = await processTrack(next.item, next.index);
+            if (res) validResults.push(res);
           }
         }
+      };
 
-        // Deduce metadata
-        const finalTitle = item.title || (files.length === 1 && globalTitle ? globalTitle : item.file.name.replace(/\.[^/.]+$/, ""));
-        const finalArtist = item.artist || globalArtist || "Juice WRLD";
-        const finalAlbum = item.album || globalAlbum || null;
-        const finalYear = item.year || (globalYear ? parseInt(globalYear, 10) : null);
+      const workers = Array(Math.min(CONCURRENCY_LIMIT, parsedTracks.length)).fill(0).map(() => worker());
+      await Promise.all(workers);
 
-        songEntriesToInsert.push({
-          title: finalTitle,
-          artist: finalArtist,
-          album: finalAlbum,
-          year: finalYear,
-          url: musicUrl,
-          cover_url: trackCoverUrl
-        });
+      // Batch insert into Supabase in chunks of 50
+      if (validResults.length > 0) {
+        const chunkSize = 50;
+        for (let i = 0; i < validResults.length; i += chunkSize) {
+          const chunk = validResults.slice(i, i + chunkSize);
+          const { error: dbError } = await supabase.from('songs').insert(chunk);
+          if (dbError) throw dbError;
+        }
       }
-
-      // 3. Batch insert all songs into Supabase Cloud Database
-      const { error: dbError } = await supabase.from('songs').insert(songEntriesToInsert);
-
-      if (dbError) throw dbError;
 
       onSuccess();
     } catch (err: any) {
-      console.error("Upload error:", err);
+      console.error("Batch upload error:", err);
       const msg = err?.message || err?.error_description || JSON.stringify(err);
-      alert(`Upload failed: ${msg}`);
+      alert(`Batch upload encountered an issue: ${msg}`);
     } finally {
       setIsUploading(false);
     }
@@ -1342,8 +1390,29 @@ function sanitizeStorageKey(name: string): string {
             </div>
           </div>
 
+          {/* LIVE BATCH UPLOAD PROGRESS BAR */}
+          {isUploading && uploadProgress.total > 0 && (
+            <div style={{ marginBottom: '1.2rem', padding: '1rem', background: 'rgba(0, 240, 255, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid var(--neon-cyan)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '0.5rem' }}>
+                <span>Uploading Tracks ({uploadProgress.completed} / {uploadProgress.total})</span>
+                <span style={{ color: 'var(--neon-pink)' }}>{Math.round((uploadProgress.completed / uploadProgress.total) * 100)}%</span>
+              </div>
+              
+              <div className={styles.progressTrackCyber} style={{ height: '8px', marginBottom: '0.5rem' }}>
+                <div 
+                  className={styles.progressFillCyber} 
+                  style={{ width: `${Math.round((uploadProgress.completed / uploadProgress.total) * 100)}%`, transition: 'width 0.2s ease' }}
+                ></div>
+              </div>
+              
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Uploading: <span style={{ color: '#fff', fontWeight: 600 }}>{uploadProgress.currentName}</span>
+              </div>
+            </div>
+          )}
+
           <button type="submit" className="btn-neon" style={{ width: '100%' }} disabled={isUploading}>
-            {isUploading ? `Uploading ${files.length} Track(s) to Apollo Cloud...` : files.length > 1 ? `Upload ${files.length} Tracks (Full Album)` : "Add to Apollo Library"}
+            {isUploading ? `Uploading ${uploadProgress.completed} / ${uploadProgress.total} Tracks (${Math.round((uploadProgress.completed / (uploadProgress.total || 1)) * 100)}%)` : files.length > 1 ? `Upload ${files.length} Tracks (Full Album)` : "Add to Apollo Library"}
           </button>
         </form>
       </div>
