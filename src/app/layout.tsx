@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AuraStream",
+  title: "Apollo",
   description: "Your personal premium music streaming platform.",
 };
 

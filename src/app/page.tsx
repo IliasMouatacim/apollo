@@ -103,7 +103,7 @@ export default function Home() {
       <header className={styles.header}>
         <div className={styles.logo}>
           <Music className="text-primary" size={28} />
-          AuraStream
+          Apollo
         </div>
         <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
           <Upload size={18} />
