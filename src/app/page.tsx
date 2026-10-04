@@ -153,7 +153,9 @@ export default function Home() {
     <div className={styles.main}>
       <header className={styles.header}>
         <div className={styles.logo}>
-          <Music className="text-primary" size={28} />
+          <div className={styles.logoIcon}>
+            <Music color="white" size={20} />
+          </div>
           Apollo
         </div>
 
@@ -162,69 +164,84 @@ export default function Home() {
             className={`${styles.tabBtn} ${activeTab === 'my-library' ? styles.tabBtnActive : ''}`}
             onClick={() => setActiveTab('my-library')}
           >
-            <Disc size={18} /> My Library ({songs.length})
+            <Disc size={16} /> Library 
+            <span style={{opacity: 0.6, fontSize: '0.75rem'}}>({songs.length})</span>
           </button>
           <button 
             className={`${styles.tabBtn} ${activeTab === 'juicewrld' ? styles.tabBtnActive : ''}`}
             onClick={() => setActiveTab('juicewrld')}
           >
-            <Flame size={18} color="#f59e0b" /> Juice WRLD Vault
+            <Flame size={16} color="var(--amber)" /> Vault
           </button>
         </div>
 
         <button className="btn btn-primary" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
-          <Upload size={18} />
-          Upload Music
+          <Upload size={16} />
+          <span className="hidden sm:inline">Upload</span>
         </button>
       </header>
 
       <div className={styles.content}>
         {activeTab === 'my-library' ? (
           songs.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Music size={48} className="text-muted" style={{ opacity: 0.5 }} />
-              <h2>Your library is empty</h2>
-              <p>Upload some music or add from the Juice WRLD Vault!</p>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            <div className={`${styles.emptyState} animate-fade-in`}>
+              <div className={styles.emptyIconWrap}>
+                <Music size={32} color="var(--accent)" />
+              </div>
+              <h2>Your Universe is Empty</h2>
+              <p>Upload your local audio files or explore the Juice WRLD Vault to start building your library.</p>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
                 <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-                  <Plus size={18} /> Add First Track
+                  <Plus size={16} /> Add Track
                 </button>
                 <button className="btn btn-secondary" onClick={() => setActiveTab('juicewrld')}>
-                  <Flame size={18} color="#f59e0b" /> Explore Juice WRLD API
+                  <Flame size={16} /> Explore Vault
                 </button>
               </div>
             </div>
           ) : (
             <div className={styles.songGrid}>
-              {songs.map((song) => (
-                <div 
-                  key={song.id} 
-                  className={`${styles.songCard} ${currentSong?.id === song.id ? styles.songCardActive : ''}`}
-                  onClick={() => playSong(song)}
-                >
-                  <div className={styles.coverContainer}>
-                    {song.cover_url ? (
-                      <img src={song.cover_url} alt={song.title} className={styles.coverImage} />
-                    ) : (
-                      <Music size={40} color="var(--text-muted)" />
-                    )}
-                    <div className={styles.playOverlay}>
-                      <div className={styles.playIcon}>
-                        {currentSong?.id === song.id && isPlaying ? <Pause size={24} /> : <Play size={24} fill="white" />}
+              {songs.map((song) => {
+                const isPlayingThis = currentSong?.id === song.id && isPlaying;
+                return (
+                  <div 
+                    key={song.id} 
+                    className={`${styles.songCard} ${currentSong?.id === song.id ? styles.songCardActive : ''}`}
+                    onClick={() => playSong(song)}
+                  >
+                    <div className={styles.coverContainer}>
+                      {song.cover_url ? (
+                        <img src={song.cover_url} alt={song.title} className={styles.coverImage} />
+                      ) : (
+                        <Music size={40} color="var(--text-muted)" />
+                      )}
+                      <div className={styles.playOverlay}>
+                        <div className={styles.playIcon}>
+                          {isPlayingThis ? <Pause size={24} /> : <Play size={24} fill="white" />}
+                        </div>
                       </div>
                     </div>
+                    <div className={styles.songTitle}>
+                      {song.title}
+                      {isPlayingThis && (
+                        <div className={styles.eqBars} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', height: '14px' }}>
+                          <div className={styles.eqBar}></div>
+                          <div className={styles.eqBar}></div>
+                          <div className={styles.eqBar}></div>
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.songArtist}>{song.artist}</div>
                   </div>
-                  <div className={styles.songTitle}>{song.title}</div>
-                  <div className={styles.songArtist}>{song.artist}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )
         ) : (
-          <div>
+          <div className="animate-fade-in">
             <div className={styles.searchHeader}>
               <div className={styles.searchBar}>
-                <Search size={20} color="var(--text-muted)" />
+                <Search size={18} color="var(--text-muted)" />
                 <input 
                   type="text" 
                   placeholder="Search Juice WRLD songs, unreleased tracks, eras..." 
@@ -232,15 +249,16 @@ export default function Home() {
                   onChange={(e) => setJuiceSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchJuiceTracks(juiceSearch)}
                 />
-                <button className="btn btn-primary" onClick={() => fetchJuiceTracks(juiceSearch)}>
-                  Search API
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 1rem' }} onClick={() => fetchJuiceTracks(juiceSearch)}>
+                  Search
                 </button>
               </div>
             </div>
 
             {isSearchingJuice ? (
-              <div className={styles.emptyState}>
-                <p>Searching Juice WRLD API database...</p>
+              <div className={styles.loadingWrap}>
+                <div className={styles.spinner}></div>
+                <p>Querying the Vault...</p>
               </div>
             ) : (
               <div className={styles.songGrid}>
@@ -276,35 +294,41 @@ export default function Home() {
       </div>
 
       {currentSong && (
-        <div className={styles.player}>
+        <div className={`${styles.player} animate-fade-in`}>
+          <div className={styles.playerGlow}></div>
           <div className={styles.playerInfo}>
             <div className={styles.playerCover}>
+              {currentSong.cover_url && (
+                <div className={styles.playerCoverGlow}>
+                  <img src={currentSong.cover_url} alt="" />
+                </div>
+              )}
               {currentSong.cover_url ? (
-                <img src={currentSong.cover_url} alt="Cover" />
+                <img src={currentSong.cover_url} alt="Cover" style={{ position: 'relative', zIndex: 2 }} />
               ) : (
-                <div style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)'}}>
+                <div style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)', position: 'relative', zIndex: 2}}>
                   <Music size={20} color="var(--text-muted)" />
                 </div>
               )}
             </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{currentSong.title}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{currentSong.artist}</div>
+            <div style={{ minWidth: 0, paddingRight: '1rem' }}>
+              <div className={styles.playerSongTitle}>{currentSong.title}</div>
+              <div className={styles.playerSongArtist}>{currentSong.artist}</div>
             </div>
           </div>
 
           <div className={styles.playerControls}>
             <div className={styles.controlsRow}>
-              <button className={styles.controlBtn} onClick={prevSong}><SkipBack size={20} fill="currentColor" /></button>
+              <button className={styles.controlBtn} onClick={prevSong}><SkipBack size={18} fill="currentColor" /></button>
               <button className={styles.playBtn} onClick={togglePlay}>
-                {isPlaying ? <Pause size={20} fill="black" /> : <Play size={20} fill="black" />}
+                {isPlaying ? <Pause size={18} fill="black" /> : <Play size={18} fill="black" style={{ marginLeft: '2px' }} />}
               </button>
-              <button className={styles.controlBtn} onClick={nextSong}><SkipForward size={20} fill="currentColor" /></button>
+              <button className={styles.controlBtn} onClick={nextSong}><SkipForward size={18} fill="currentColor" /></button>
             </div>
             <div className={styles.progressBar}>
               <span>{formatTime(progress)}</span>
               <div className={styles.progressTrack} onClick={handleProgressClick}>
-                <div className={styles.progressFill} style={{ width: `${(progress / duration) * 100}%` }}></div>
+                <div className={styles.progressFill} style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}></div>
               </div>
               <span>{formatTime(duration)}</span>
             </div>
@@ -312,13 +336,13 @@ export default function Home() {
 
           <div className={styles.playerExtra}>
             <div className={styles.volumeControl}>
-              <Volume2 size={18} color="var(--text-muted)" />
+              <Volume2 size={16} color="var(--text-muted)" />
               <div className={styles.progressTrack} style={{ flex: 1 }} onClick={(e) => {
                 if(!audioRef.current) return;
                 const bounds = e.currentTarget.getBoundingClientRect();
-                audioRef.current.volume = (e.clientX - bounds.left) / bounds.width;
+                audioRef.current.volume = Math.max(0, Math.min(1, (e.clientX - bounds.left) / bounds.width));
               }}>
-                <div className={styles.progressFill} style={{ width: '100%' }}></div>
+                <div className={styles.progressFill} style={{ width: `${(audioRef.current?.volume ?? 1) * 100}%` }}></div>
               </div>
             </div>
           </div>
