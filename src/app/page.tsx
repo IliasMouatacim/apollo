@@ -412,9 +412,10 @@ function UploadModal({
       if (dbError) throw dbError;
 
       onSuccess();
-    } catch (err) {
-      console.error(err);
-      alert("Error during upload");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      const msg = err?.message || err?.error_description || JSON.stringify(err);
+      alert(`Upload failed: ${msg}`);
     } finally {
       setIsUploading(false);
     }
