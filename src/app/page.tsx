@@ -224,9 +224,6 @@ export default function Home() {
         <aside className={styles.cyberDock}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className={styles.brandWrap}>
-              <div className={styles.brandIcon}>
-                <Radio color="white" size={24} />
-              </div>
               <div className={`${styles.brandText} gradient-text-flashy`}>APOLLO</div>
             </div>
 
