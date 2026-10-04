@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, Upload, Music, Plus, X, Image as ImageIcon, Search, Disc, Flame } from "lucide-react";
+import { 
+  Play, Pause, SkipBack, SkipForward, Volume2, Upload, Music, Plus, X, 
+  Image as ImageIcon, Search, Disc, Flame, Sparkles, Maximize2, Zap, 
+  Radio
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import styles from "./page.module.css";
 
@@ -30,6 +34,7 @@ export default function Home() {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld'>('my-library');
   
   // Juice WRLD API state
@@ -62,17 +67,16 @@ export default function Home() {
     try {
       const url = query.trim()
         ? `https://juicewrldapi.com/api/songs?search=${encodeURIComponent(query)}`
-        : `https://juicewrldapi.com/api/songs?limit=20`;
+        : `https://juicewrldapi.com/api/songs?limit=24`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        // Juice WRLD API array parsing
         const list = Array.isArray(data) ? data : (data.songs || data.data || []);
         setJuiceTracks(list.map((item: any, i: number) => ({
           id: item.id || item._id || `jw-${i}`,
           name: item.title || item.name || item.songName || "Untitled Track",
           era: item.era || item.album || "999 Era",
-          state: item.state || item.status || "Released",
+          state: item.state || item.status || "Vault Track",
           releaseDate: item.releaseDate || item.date || "",
           producer: item.producer || item.producers || "Juice WRLD",
           coverUrl: item.cover || item.image || item.art || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"
@@ -149,206 +153,401 @@ export default function Home() {
     setIsModalOpen(true);
   };
 
+  const activeFeaturedSong = currentSong || (songs.length > 0 ? songs[0] : null);
+
   return (
-    <div className={styles.main}>
-      <header className={styles.header}>
-        <div className={styles.logo}>
-          <div className={styles.logoIcon}>
-            <Music color="white" size={20} />
+    <>
+      {/* Dynamic Aurora Ambient Background */}
+      <div className="aurora-bg">
+        <div className="aurora-blob aurora-blob-1"></div>
+        <div className="aurora-blob aurora-blob-2"></div>
+        <div className="aurora-blob aurora-blob-3"></div>
+      </div>
+      <div className="noise-overlay"></div>
+
+      <div className={styles.mainApp}>
+        {/* Left Cyber Dock Sidebar */}
+        <aside className={styles.cyberDock}>
+          <div>
+            <div className={styles.brandWrap}>
+              <div className={styles.brandIcon}>
+                <Radio color="white" size={24} />
+              </div>
+              <div className={`${styles.brandText} gradient-text-flashy`}>APOLLO</div>
+            </div>
+
+            <nav className={styles.navSection}>
+              <div className={styles.navLabel}>Sound Deck</div>
+              <button 
+                className={`${styles.navItem} ${activeTab === 'my-library' ? styles.navItemActive : ''}`}
+                onClick={() => setActiveTab('my-library')}
+              >
+                <Disc size={18} /> Library
+                <span className={styles.dockBadge}>{songs.length}</span>
+              </button>
+
+              <button 
+                className={`${styles.navItem} ${activeTab === 'juicewrld' ? styles.navItemActive : ''}`}
+                onClick={() => setActiveTab('juicewrld')}
+              >
+                <Flame size={18} style={{ color: 'var(--neon-pink)' }} /> Juice Vault
+                <span className={styles.dockBadge} style={{ background: 'rgba(255,0,127,0.15)', color: 'var(--neon-pink)', borderColor: 'rgba(255,0,127,0.3)' }}>999</span>
+              </button>
+
+              <button 
+                className={styles.navItem}
+                onClick={() => setIsVisualizerOpen(true)}
+              >
+                <Zap size={18} style={{ color: 'var(--neon-amber)' }} /> Visualizer Studio
+              </button>
+            </nav>
           </div>
-          Apollo
-        </div>
 
-        <div className={styles.tabNav}>
-          <button 
-            className={`${styles.tabBtn} ${activeTab === 'my-library' ? styles.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('my-library')}
-          >
-            <Disc size={16} /> Library 
-            <span style={{opacity: 0.6, fontSize: '0.75rem'}}>({songs.length})</span>
-          </button>
-          <button 
-            className={`${styles.tabBtn} ${activeTab === 'juicewrld' ? styles.tabBtnActive : ''}`}
-            onClick={() => setActiveTab('juicewrld')}
-          >
-            <Flame size={16} color="var(--amber)" /> Vault
-          </button>
-        </div>
+          <div className={styles.dockFooter}>
+            <div className={styles.dockStatus}>
+              <span className={styles.statusDot}></span>
+              <span>Audio Engine Live</span>
+            </div>
+            <button 
+              className="btn-neon" 
+              style={{ width: '100%', marginTop: '1rem', fontSize: '0.8rem', padding: '0.6rem 1rem' }} 
+              onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}
+            >
+              <Upload size={16} /> Upload Track
+            </button>
+          </div>
+        </aside>
 
-        <button className="btn btn-primary" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
-          <Upload size={16} />
-          <span className="hidden sm:inline">Upload</span>
-        </button>
-      </header>
-
-      <div className={styles.content}>
-        {activeTab === 'my-library' ? (
-          songs.length === 0 ? (
-            <div className={`${styles.emptyState} animate-fade-in`}>
-              <div className={styles.emptyIconWrap}>
-                <Music size={32} color="var(--accent)" />
-              </div>
-              <h2>Your Universe is Empty</h2>
-              <p>Upload your local audio files or explore the Juice WRLD Vault to start building your library.</p>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-                  <Plus size={16} /> Add Track
+        {/* Main Center Content View */}
+        <main className={styles.contentArea}>
+          {/* Top Search Bar */}
+          <header className={styles.topBar}>
+            <div className={styles.searchBox}>
+              <Search size={18} style={{ color: 'var(--neon-cyan)' }} />
+              <input 
+                type="text" 
+                placeholder="Search tracks, vault audio, eras..." 
+                value={activeTab === 'juicewrld' ? juiceSearch : ''}
+                onChange={(e) => {
+                  if (activeTab === 'juicewrld') {
+                    setJuiceSearch(e.target.value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && activeTab === 'juicewrld') {
+                    fetchJuiceTracks(juiceSearch);
+                  }
+                }}
+              />
+              {activeTab === 'juicewrld' && (
+                <button className="btn-cyber-outline" style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem' }} onClick={() => fetchJuiceTracks(juiceSearch)}>
+                  Search Vault
                 </button>
-                <button className="btn btn-secondary" onClick={() => setActiveTab('juicewrld')}>
-                  <Flame size={16} /> Explore Vault
+              )}
+            </div>
+
+            <div className={styles.topActions}>
+              <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
+                <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> FX Deck
+              </button>
+              <button className="btn-neon" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
+                <Plus size={16} /> Add Song
+              </button>
+            </div>
+          </header>
+
+          {/* Featured Stage / Hero Vinyl Showcase */}
+          <section className={styles.heroStage}>
+            <div className={styles.heroContent}>
+              <div className={styles.heroTag}>
+                <Sparkles size={14} /> High Fidelity Audio Platform
+              </div>
+              <h1 className={`${styles.heroTitle} gradient-text-flashy`}>
+                {activeFeaturedSong ? activeFeaturedSong.title : "Immersive Sound System"}
+              </h1>
+              <p className={styles.heroSub}>
+                {activeFeaturedSong 
+                  ? `Now ready: ${activeFeaturedSong.artist} • ${activeFeaturedSong.album || 'Apollo Original Stream'}` 
+                  : "Experience studio quality audio playback, custom library uploads, and Juice WRLD Vault integration."}
+              </p>
+              
+              {activeFeaturedSong && (
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button className="btn-neon" onClick={() => playSong(activeFeaturedSong)}>
+                    {currentSong?.id === activeFeaturedSong.id && isPlaying ? <Pause size={18} /> : <Play size={18} fill="white" />}
+                    {currentSong?.id === activeFeaturedSong.id && isPlaying ? "Pause Audio" : "Play Now"}
+                  </button>
+                  <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
+                    <Maximize2 size={16} /> Open Studio Visualizer
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Vinyl Record Display */}
+            <div className={styles.vinylWrapper}>
+              <img 
+                src={activeFeaturedSong?.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                alt="Album Cover" 
+                className={styles.albumCardCover} 
+              />
+              <div className={`${styles.vinylDisc} ${isPlaying ? styles.isVinylSpinning : ''}`}>
+                <div className={styles.vinylCenterLabel}>
+                  <div className={styles.vinylHole}></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Content Track Grid */}
+          <section className={styles.gridSection}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                {activeTab === 'my-library' ? <Disc style={{ color: 'var(--neon-cyan)' }} /> : <Flame style={{ color: 'var(--neon-pink)' }} />}
+                {activeTab === 'my-library' ? "Your Music Collection" : "Juice WRLD Unreleased Vault"}
+              </h2>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  className={`btn-cyber-outline ${activeTab === 'my-library' ? styles.navItemActive : ''}`}
+                  onClick={() => setActiveTab('my-library')}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }}
+                >
+                  Library ({songs.length})
+                </button>
+                <button 
+                  className={`btn-cyber-outline ${activeTab === 'juicewrld' ? styles.navItemActive : ''}`}
+                  onClick={() => setActiveTab('juicewrld')}
+                  style={{ fontSize: '0.8rem', padding: '0.4rem 0.9rem' }}
+                >
+                  Vault 999
                 </button>
               </div>
             </div>
-          ) : (
-            <div className={styles.songGrid}>
-              {songs.map((song) => {
-                const isPlayingThis = currentSong?.id === song.id && isPlaying;
-                return (
-                  <div 
-                    key={song.id} 
-                    className={`${styles.songCard} ${currentSong?.id === song.id ? styles.songCardActive : ''}`}
-                    onClick={() => playSong(song)}
-                  >
-                    <div className={styles.coverContainer}>
-                      {song.cover_url ? (
-                        <img src={song.cover_url} alt={song.title} className={styles.coverImage} />
-                      ) : (
-                        <Music size={40} color="var(--text-muted)" />
-                      )}
-                      <div className={styles.playOverlay}>
-                        <div className={styles.playIcon}>
-                          {isPlayingThis ? <Pause size={24} /> : <Play size={24} fill="white" />}
-                        </div>
-                      </div>
-                    </div>
-                    <div className={styles.songTitle}>
-                      {song.title}
-                      {isPlayingThis && (
-                        <div className={styles.eqBars} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', height: '14px' }}>
-                          <div className={styles.eqBar}></div>
-                          <div className={styles.eqBar}></div>
-                          <div className={styles.eqBar}></div>
-                        </div>
-                      )}
-                    </div>
-                    <div className={styles.songArtist}>{song.artist}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )
-        ) : (
-          <div className="animate-fade-in">
-            <div className={styles.searchHeader}>
-              <div className={styles.searchBar}>
-                <Search size={18} color="var(--text-muted)" />
-                <input 
-                  type="text" 
-                  placeholder="Search Juice WRLD songs, unreleased tracks, eras..." 
-                  value={juiceSearch}
-                  onChange={(e) => setJuiceSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && fetchJuiceTracks(juiceSearch)}
-                />
-                <button className="btn btn-secondary" style={{ padding: '0.4rem 1rem' }} onClick={() => fetchJuiceTracks(juiceSearch)}>
-                  Search
-                </button>
-              </div>
-            </div>
 
-            {isSearchingJuice ? (
-              <div className={styles.loadingWrap}>
-                <div className={styles.spinner}></div>
-                <p>Querying the Vault...</p>
-              </div>
-            ) : (
-              <div className={styles.songGrid}>
-                {juiceTracks.map((track) => (
-                  <div key={track.id} className={styles.songCard}>
-                    <div className={styles.coverContainer}>
-                      <img 
-                        src={track.coverUrl || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
-                        alt={track.name} 
-                        className={styles.coverImage} 
-                      />
-                      <div className={styles.badge}>{track.state || 'Track'}</div>
-                    </div>
-                    <div className={styles.songTitle}>{track.name}</div>
-                    <div className={styles.songArtist}>Juice WRLD • {track.era}</div>
-                    
-                    <button 
-                      className="btn btn-secondary" 
-                      style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleJuiceTrackUpload(track);
-                      }}
-                    >
-                      <Upload size={14} /> Upload Audio File
+            {activeTab === 'my-library' ? (
+              songs.length === 0 ? (
+                <div className="cyber-panel" style={{ padding: '3rem', textAlign: 'center', margin: '2rem 0' }}>
+                  <Music size={48} style={{ color: 'var(--neon-pink)', margin: '0 auto 1rem' }} />
+                  <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No Songs Uploaded Yet</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Your sound bank is empty. Upload your first track or import from the Juice WRLD Vault.</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                    <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
+                      <Upload size={16} /> Upload Audio File
+                    </button>
+                    <button className="btn-cyber-outline" onClick={() => setActiveTab('juicewrld')}>
+                      <Flame size={16} /> Explore Vault
                     </button>
                   </div>
-                ))}
+                </div>
+              ) : (
+                <div className={styles.trackGrid}>
+                  {songs.map((song) => {
+                    const isPlayingThis = currentSong?.id === song.id && isPlaying;
+                    return (
+                      <div 
+                        key={song.id} 
+                        className={`${styles.cyberCard} ${currentSong?.id === song.id ? styles.cyberCardActive : ''}`}
+                        onClick={() => playSong(song)}
+                      >
+                        <div className={styles.cardCoverBox}>
+                          {song.cover_url ? (
+                            <img src={song.cover_url} alt={song.title} className={styles.cardImage} />
+                          ) : (
+                            <Music size={48} style={{ color: 'var(--text-muted)' }} />
+                          )}
+                          <div className={styles.cardPlayBtnOverlay}>
+                            <div className={styles.playCircleBtn}>
+                              {isPlayingThis ? <Pause size={24} /> : <Play size={24} fill="white" style={{ marginLeft: '3px' }} />}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.cardInfo}>
+                          <div className={styles.cardTitle}>{song.title}</div>
+                          <div className={styles.cardSub}>{song.artist}</div>
+                        </div>
+
+                        {isPlayingThis && (
+                          <div className={styles.eqContainer} style={{ marginTop: '0.5rem' }}>
+                            <div className={styles.eqBar}></div>
+                            <div className={styles.eqBar}></div>
+                            <div className={styles.eqBar}></div>
+                            <div className={styles.eqBar}></div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              <div>
+                {isSearchingJuice ? (
+                  <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--neon-cyan)' }}>
+                    <div className="animate-spin-slow" style={{ display: 'inline-block', marginBottom: '1rem' }}>
+                      <Radio size={40} />
+                    </div>
+                    <p style={{ fontWeight: 600 }}>Fetching tracks from Juice WRLD Vault...</p>
+                  </div>
+                ) : (
+                  <div className={styles.trackGrid}>
+                    {juiceTracks.map((track) => (
+                      <div key={track.id} className={styles.cyberCard}>
+                        <div className={styles.cardCoverBox}>
+                          <img 
+                            src={track.coverUrl || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                            alt={track.name} 
+                            className={styles.cardImage} 
+                          />
+                          <span className={styles.cardBadge}>{track.state || 'VAULT'}</span>
+                        </div>
+                        
+                        <div className={styles.cardInfo}>
+                          <div className={styles.cardTitle}>{track.name}</div>
+                          <div className={styles.cardSub}>Juice WRLD • {track.era}</div>
+                        </div>
+
+                        <button 
+                          className="btn-cyber-outline" 
+                          style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.78rem', padding: '0.45rem' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleJuiceTrackUpload(track);
+                          }}
+                        >
+                          <Upload size={14} /> Import to Apollo
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
+          </section>
+        </main>
       </div>
 
+      {/* Futuristic Cyberdeck Player */}
       {currentSong && (
-        <div className={`${styles.player} animate-fade-in`}>
-          <div className={styles.playerGlow}></div>
-          <div className={styles.playerInfo}>
-            <div className={styles.playerCover}>
-              {currentSong.cover_url && (
-                <div className={styles.playerCoverGlow}>
-                  <img src={currentSong.cover_url} alt="" />
-                </div>
-              )}
+        <div className={styles.cyberPlayer}>
+          <div className={styles.playerGlowLine}></div>
+          
+          <div className={styles.playerTrackMeta}>
+            <div className={styles.playerArtWrap}>
               {currentSong.cover_url ? (
-                <img src={currentSong.cover_url} alt="Cover" style={{ position: 'relative', zIndex: 2 }} />
+                <>
+                  <img src={currentSong.cover_url} alt="Cover" />
+                  <div className={styles.playerArtGlow}></div>
+                </>
               ) : (
-                <div style={{width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-elevated)', position: 'relative', zIndex: 2}}>
-                  <Music size={20} color="var(--text-muted)" />
+                <div style={{ width: '100%', height: '100%', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Music size={24} style={{ color: 'var(--text-muted)' }} />
                 </div>
               )}
             </div>
-            <div style={{ minWidth: 0, paddingRight: '1rem' }}>
-              <div className={styles.playerSongTitle}>{currentSong.title}</div>
-              <div className={styles.playerSongArtist}>{currentSong.artist}</div>
+            <div style={{ minWidth: 0 }}>
+              <div className={styles.playerTitleText}>{currentSong.title}</div>
+              <div className={styles.playerArtistText}>{currentSong.artist}</div>
             </div>
           </div>
 
-          <div className={styles.playerControls}>
-            <div className={styles.controlsRow}>
-              <button className={styles.controlBtn} onClick={prevSong}><SkipBack size={18} fill="currentColor" /></button>
-              <button className={styles.playBtn} onClick={togglePlay}>
-                {isPlaying ? <Pause size={18} fill="black" /> : <Play size={18} fill="black" style={{ marginLeft: '2px' }} />}
+          <div className={styles.playerCenterControls}>
+            <div className={styles.controlButtons}>
+              <button className={styles.btnControlIcon} onClick={prevSong}><SkipBack size={20} fill="currentColor" /></button>
+              <button className={styles.btnPlayMain} onClick={togglePlay}>
+                {isPlaying ? <Pause size={22} fill="black" /> : <Play size={22} fill="black" style={{ marginLeft: '2px' }} />}
               </button>
-              <button className={styles.controlBtn} onClick={nextSong}><SkipForward size={18} fill="currentColor" /></button>
+              <button className={styles.btnControlIcon} onClick={nextSong}><SkipForward size={20} fill="currentColor" /></button>
             </div>
-            <div className={styles.progressBar}>
+            
+            <div className={styles.progressContainer}>
               <span>{formatTime(progress)}</span>
-              <div className={styles.progressTrack} onClick={handleProgressClick}>
-                <div className={styles.progressFill} style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}></div>
+              <div className={styles.progressTrackCyber} onClick={handleProgressClick}>
+                <div className={styles.progressFillCyber} style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }}></div>
               </div>
               <span>{formatTime(duration)}</span>
             </div>
           </div>
 
-          <div className={styles.playerExtra}>
-            <div className={styles.volumeControl}>
-              <Volume2 size={16} color="var(--text-muted)" />
-              <div className={styles.progressTrack} style={{ flex: 1 }} onClick={(e) => {
-                if(!audioRef.current) return;
-                const bounds = e.currentTarget.getBoundingClientRect();
-                audioRef.current.volume = Math.max(0, Math.min(1, (e.clientX - bounds.left) / bounds.width));
-              }}>
-                <div className={styles.progressFill} style={{ width: `${(audioRef.current?.volume ?? 1) * 100}%` }}></div>
+          <div className={styles.playerRightExtras}>
+            <div className={styles.volumeBar}>
+              <Volume2 size={18} style={{ color: 'var(--neon-cyan)' }} />
+              <div 
+                className={styles.progressTrackCyber} 
+                style={{ height: '5px' }}
+                onClick={(e) => {
+                  if(!audioRef.current) return;
+                  const bounds = e.currentTarget.getBoundingClientRect();
+                  audioRef.current.volume = Math.max(0, Math.min(1, (e.clientX - bounds.left) / bounds.width));
+                }}
+              >
+                <div className={styles.progressFillCyber} style={{ width: `${(audioRef.current?.volume ?? 1) * 100}%` }}></div>
               </div>
             </div>
+
+            <button className={styles.btnControlIcon} onClick={() => setIsVisualizerOpen(true)}>
+              <Maximize2 size={18} style={{ color: 'var(--neon-pink)' }} />
+            </button>
           </div>
         </div>
       )}
 
+      {/* Visualizer Studio Overlay */}
+      {isVisualizerOpen && (
+        <div className={styles.visualizerOverlay}>
+          <div className={styles.visualizerHeader}>
+            <div className="gradient-text-flashy" style={{ fontSize: '1.8rem', fontWeight: 800 }}>APOLLO AUDIO VISUALIZER STUDIO</div>
+            <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(false)}>
+              <X size={20} /> Close Visualizer
+            </button>
+          </div>
+
+          <div className={styles.visualizerBody}>
+            <div className={styles.giantSpinningVinyl}>
+              <img 
+                src={currentSong?.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                alt="Record Art" 
+                className={`${styles.giantCenterArt} ${isPlaying ? styles.isVinylSpinning : ''}`} 
+              />
+            </div>
+
+            <div>
+              <h2 className="gradient-text-flashy" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>
+                {currentSong ? currentSong.title : "No Track Playing"}
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
+                {currentSong ? currentSong.artist : "Select a track from your library to start"}
+              </p>
+            </div>
+
+            {/* 16 Audio Spectrum Frequency Bars */}
+            <div className={styles.fullSpectrumBars}>
+              {[...Array(16)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className={styles.fullSpectrumBar} 
+                  style={{ 
+                    animationDuration: `${0.4 + (i % 5) * 0.15}s`,
+                    animationPlayState: isPlaying ? 'running' : 'paused' 
+                  }} 
+                />
+              ))}
+            </div>
+
+            {currentSong && (
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                <button className={styles.btnControlIcon} onClick={prevSong}><SkipBack size={28} /></button>
+                <button className={styles.btnPlayMain} style={{ width: '64px', height: '64px' }} onClick={togglePlay}>
+                  {isPlaying ? <Pause size={28} fill="black" /> : <Play size={28} fill="black" style={{ marginLeft: '3px' }} />}
+                </button>
+                <button className={styles.btnControlIcon} onClick={nextSong}><SkipForward size={28} /></button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Upload Modal */}
       {isModalOpen && (
         <UploadModal 
           selectedTrack={selectedJuiceTrack}
@@ -369,7 +568,7 @@ export default function Home() {
         onTimeUpdate={handleTimeUpdate} 
         onEnded={nextSong}
       />
-    </div>
+    </>
   );
 }
 
@@ -388,9 +587,9 @@ function UploadModal({
   
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!file) return alert("Please select a music file (.mp3 / .wav)");
+    if (!file) return alert("Please select an audio file (.mp3 / .wav)");
     
-    // Capture FormData before any await calls, as e.currentTarget can become null later
+    // Capture FormData before any await calls
     const formData = new FormData(e.currentTarget);
     const title = formData.get('title') as string;
     const artist = formData.get('artist') as string;
@@ -400,9 +599,9 @@ function UploadModal({
     setIsUploading(true);
     
     try {
-      // 1. Upload Music File
+      // 1. Upload Audio File
       const musicPath = `music/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-      const { data: musicData, error: musicError } = await supabase.storage
+      const { error: musicError } = await supabase.storage
         .from('media')
         .upload(musicPath, file);
         
@@ -410,7 +609,7 @@ function UploadModal({
       
       const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
 
-      // 2. Upload Cover Art (if selected file or pre-filled URL)
+      // 2. Upload Cover Art
       let coverUrl = selectedTrack?.coverUrl || null;
       if (cover) {
         const coverPath = `covers/${Date.now()}-${cover.name.replace(/\s+/g, '_')}`;
@@ -424,8 +623,7 @@ function UploadModal({
         }
       }
 
-      // 3. Save to Database
-
+      // 3. Insert into Supabase
       const { error: dbError } = await supabase.from('songs').insert({
         title,
         artist,
@@ -448,90 +646,96 @@ function UploadModal({
   };
 
   return (
-    <div className={styles.modalOverlay}>
-      <div className={`${styles.modalContent} glass-panel animate-fade-in`}>
-        <div className={styles.modalHeader}>
-          <h3>{selectedTrack ? `Upload Audio for "${selectedTrack.name}"` : "Upload Music"}</h3>
-          <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+    <div className={styles.modalBackdrop}>
+      <div className={styles.modalWindow}>
+        <div className={styles.modalHead}>
+          <h3 className="gradient-text-flashy">
+            {selectedTrack ? `Import "${selectedTrack.name}"` : "Upload Music Track"}
+          </h3>
+          <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={onClose}>
+            <X size={18} />
+          </button>
         </div>
         
         <form onSubmit={handleUpload}>
-          <div className={styles.fileInputContainer} onClick={() => document.getElementById('musicFileInput')?.click()}>
-            <Music size={32} color="var(--primary)" style={{ margin: '0 auto 1rem' }} />
-            <div>{file ? file.name : "Click to select MP3/Audio file"}</div>
+          <div className={styles.dropzoneCyber} onClick={() => document.getElementById('musicFileInput')?.click()}>
+            <Music size={36} style={{ color: 'var(--neon-cyan)', margin: '0 auto 0.75rem' }} />
+            <div style={{ fontWeight: 600, color: '#fff' }}>{file ? file.name : "Click to select MP3 / WAV audio file"}</div>
             <input 
               id="musicFileInput"
               type="file" 
               accept="audio/*" 
-              className={styles.fileInput} 
+              style={{ display: 'none' }}
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               required
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label>Cover Art (Optional)</label>
-            <div className={styles.fileInputContainer} style={{ padding: '1rem' }} onClick={() => document.getElementById('coverFileInput')?.click()}>
-              <ImageIcon size={24} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />
-              <div style={{ fontSize: '0.85rem' }}>
-                {cover ? cover.name : selectedTrack?.coverUrl ? "Using Juice WRLD API Cover Art" : "Select Image"}
+          <div style={{ marginBottom: '1.2rem' }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+              Cover Art (Optional)
+            </label>
+            <div className={styles.dropzoneCyber} style={{ padding: '1rem' }} onClick={() => document.getElementById('coverFileInput')?.click()}>
+              <ImageIcon size={22} style={{ color: 'var(--neon-pink)', margin: '0 auto 0.4rem' }} />
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                {cover ? cover.name : selectedTrack?.coverUrl ? "Using Juice WRLD Vault Cover Art" : "Click to select image cover"}
               </div>
               <input 
                 id="coverFileInput"
                 type="file" 
                 accept="image/*" 
-                className={styles.fileInput} 
+                style={{ display: 'none' }}
                 onChange={(e) => setCover(e.target.files?.[0] || null)}
               />
             </div>
           </div>
 
-          <div className={styles.formGroup}>
-            <label>Title</label>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Title</label>
             <input 
               name="title" 
-              className="input-field" 
+              className="input-cyber" 
               placeholder="Song Title" 
               required 
               defaultValue={selectedTrack?.name || file?.name.replace(/\.[^/.]+$/, "") || ""} 
             />
           </div>
           
-          <div className={styles.formGroup}>
-            <label>Artist</label>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Artist</label>
             <input 
               name="artist" 
-              className="input-field" 
+              className="input-cyber" 
               placeholder="Artist Name" 
               required 
               defaultValue={selectedTrack ? "Juice WRLD" : ""} 
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <div className={styles.formGroup} style={{ flex: 1 }}>
-              <label>Album / Era</label>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Album / Era</label>
               <input 
                 name="album" 
-                className="input-field" 
+                className="input-cyber" 
                 placeholder="Album Name" 
                 defaultValue={selectedTrack?.era || ""} 
               />
             </div>
-            <div className={styles.formGroup} style={{ flex: 1 }}>
-              <label>Year</label>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Year</label>
               <input 
                 name="year" 
                 type="number" 
-                className="input-field" 
+                className="input-cyber" 
                 placeholder="2024" 
                 defaultValue={selectedTrack?.releaseDate ? new Date(selectedTrack.releaseDate).getFullYear() || "" : ""} 
               />
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isUploading}>
-            {isUploading ? "Uploading Track..." : "Upload to Apollo"}
+          <button type="submit" className="btn-neon" style={{ width: '100%' }} disabled={isUploading}>
+            {isUploading ? "Uploading Audio Engine..." : "Add to Apollo Library"}
           </button>
         </form>
       </div>
