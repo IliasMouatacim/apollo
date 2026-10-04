@@ -251,6 +251,9 @@ h1, h2, h3, .heading-syne {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  display: inline-block;
+  padding: 0.1em 0;
+  line-height: 1.25;
 }
 
 .animate-spin-slow {
