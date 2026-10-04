@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, Upload, Music, Plus, X, Image as ImageIcon } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, Upload, Music, Plus, X, Image as ImageIcon, Search, Disc, Flame } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import styles from "./page.module.css";
 
@@ -15,18 +15,36 @@ type Song = {
   cover_url: string | null;
 };
 
+type JuiceTrack = {
+  id: string;
+  name: string;
+  era?: string;
+  state?: string;
+  releaseDate?: string;
+  producer?: string;
+  coverUrl?: string;
+};
+
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld'>('my-library');
   
+  // Juice WRLD API state
+  const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
+  const [juiceSearch, setJuiceSearch] = useState("");
+  const [isSearchingJuice, setIsSearchingJuice] = useState(false);
+  const [selectedJuiceTrack, setSelectedJuiceTrack] = useState<JuiceTrack | null>(null);
+
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     fetchSongs();
+    fetchJuiceTracks("Lucid Dreams");
   }, []);
 
   const fetchSongs = async () => {
@@ -36,6 +54,34 @@ export default function Home() {
       if (data) setSongs(data);
     } catch (e) {
       console.error("Failed to fetch songs", e);
+    }
+  };
+
+  const fetchJuiceTracks = async (query: string = "") => {
+    setIsSearchingJuice(true);
+    try {
+      const url = query.trim()
+        ? `https://juicewrldapi.com/api/songs?search=${encodeURIComponent(query)}`
+        : `https://juicewrldapi.com/api/songs?limit=20`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        // Juice WRLD API array parsing
+        const list = Array.isArray(data) ? data : (data.songs || data.data || []);
+        setJuiceTracks(list.map((item: any, i: number) => ({
+          id: item.id || item._id || `jw-${i}`,
+          name: item.title || item.name || item.songName || "Untitled Track",
+          era: item.era || item.album || "999 Era",
+          state: item.state || item.status || "Released",
+          releaseDate: item.releaseDate || item.date || "",
+          producer: item.producer || item.producers || "Juice WRLD",
+          coverUrl: item.cover || item.image || item.art || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"
+        })));
+      }
+    } catch (e) {
+      console.error("Failed to fetch from Juice WRLD API", e);
+    } finally {
+      setIsSearchingJuice(false);
     }
   };
 
@@ -98,6 +144,11 @@ export default function Home() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
+  const handleJuiceTrackUpload = (track: JuiceTrack) => {
+    setSelectedJuiceTrack(track);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className={styles.main}>
       <header className={styles.header}>
@@ -105,47 +156,121 @@ export default function Home() {
           <Music className="text-primary" size={28} />
           Apollo
         </div>
-        <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+
+        <div className={styles.tabNav}>
+          <button 
+            className={`${styles.tabBtn} ${activeTab === 'my-library' ? styles.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('my-library')}
+          >
+            <Disc size={18} /> My Library ({songs.length})
+          </button>
+          <button 
+            className={`${styles.tabBtn} ${activeTab === 'juicewrld' ? styles.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('juicewrld')}
+          >
+            <Flame size={18} color="#f59e0b" /> Juice WRLD Vault
+          </button>
+        </div>
+
+        <button className="btn btn-primary" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
           <Upload size={18} />
           Upload Music
         </button>
       </header>
 
       <div className={styles.content}>
-        {songs.length === 0 ? (
-          <div className={styles.emptyState}>
-            <Music size={48} className="text-muted" style={{ opacity: 0.5 }} />
-            <h2>Your library is empty</h2>
-            <p>Upload some music to get started.</p>
-            <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
-              <Plus size={18} />
-              Add First Track
-            </button>
-          </div>
-        ) : (
-          <div className={styles.songGrid}>
-            {songs.map((song) => (
-              <div 
-                key={song.id} 
-                className={`${styles.songCard} ${currentSong?.id === song.id ? styles.songCardActive : ''}`}
-                onClick={() => playSong(song)}
-              >
-                <div className={styles.coverContainer}>
-                  {song.cover_url ? (
-                    <img src={song.cover_url} alt={song.title} className={styles.coverImage} />
-                  ) : (
-                    <Music size={40} color="var(--text-muted)" />
-                  )}
-                  <div className={styles.playOverlay}>
-                    <div className={styles.playIcon}>
-                      {currentSong?.id === song.id && isPlaying ? <Pause size={24} /> : <Play size={24} fill="white" />}
+        {activeTab === 'my-library' ? (
+          songs.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Music size={48} className="text-muted" style={{ opacity: 0.5 }} />
+              <h2>Your library is empty</h2>
+              <p>Upload some music or add from the Juice WRLD Vault!</p>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button className="btn btn-primary" onClick={() => setIsModalOpen(true)}>
+                  <Plus size={18} /> Add First Track
+                </button>
+                <button className="btn btn-secondary" onClick={() => setActiveTab('juicewrld')}>
+                  <Flame size={18} color="#f59e0b" /> Explore Juice WRLD API
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.songGrid}>
+              {songs.map((song) => (
+                <div 
+                  key={song.id} 
+                  className={`${styles.songCard} ${currentSong?.id === song.id ? styles.songCardActive : ''}`}
+                  onClick={() => playSong(song)}
+                >
+                  <div className={styles.coverContainer}>
+                    {song.cover_url ? (
+                      <img src={song.cover_url} alt={song.title} className={styles.coverImage} />
+                    ) : (
+                      <Music size={40} color="var(--text-muted)" />
+                    )}
+                    <div className={styles.playOverlay}>
+                      <div className={styles.playIcon}>
+                        {currentSong?.id === song.id && isPlaying ? <Pause size={24} /> : <Play size={24} fill="white" />}
+                      </div>
                     </div>
                   </div>
+                  <div className={styles.songTitle}>{song.title}</div>
+                  <div className={styles.songArtist}>{song.artist}</div>
                 </div>
-                <div className={styles.songTitle}>{song.title}</div>
-                <div className={styles.songArtist}>{song.artist}</div>
+              ))}
+            </div>
+          )
+        ) : (
+          <div>
+            <div className={styles.searchHeader}>
+              <div className={styles.searchBar}>
+                <Search size={20} color="var(--text-muted)" />
+                <input 
+                  type="text" 
+                  placeholder="Search Juice WRLD songs, unreleased tracks, eras..." 
+                  value={juiceSearch}
+                  onChange={(e) => setJuiceSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchJuiceTracks(juiceSearch)}
+                />
+                <button className="btn btn-primary" onClick={() => fetchJuiceTracks(juiceSearch)}>
+                  Search API
+                </button>
               </div>
-            ))}
+            </div>
+
+            {isSearchingJuice ? (
+              <div className={styles.emptyState}>
+                <p>Searching Juice WRLD API database...</p>
+              </div>
+            ) : (
+              <div className={styles.songGrid}>
+                {juiceTracks.map((track) => (
+                  <div key={track.id} className={styles.songCard}>
+                    <div className={styles.coverContainer}>
+                      <img 
+                        src={track.coverUrl || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                        alt={track.name} 
+                        className={styles.coverImage} 
+                      />
+                      <div className={styles.badge}>{track.state || 'Track'}</div>
+                    </div>
+                    <div className={styles.songTitle}>{track.name}</div>
+                    <div className={styles.songArtist}>Juice WRLD • {track.era}</div>
+                    
+                    <button 
+                      className="btn btn-secondary" 
+                      style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleJuiceTrackUpload(track);
+                      }}
+                    >
+                      <Upload size={14} /> Upload Audio File
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -202,9 +327,14 @@ export default function Home() {
 
       {isModalOpen && (
         <UploadModal 
-          onClose={() => setIsModalOpen(false)} 
+          selectedTrack={selectedJuiceTrack}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedJuiceTrack(null);
+          }} 
           onSuccess={() => {
             setIsModalOpen(false);
+            setSelectedJuiceTrack(null);
             fetchSongs();
           }} 
         />
@@ -219,14 +349,22 @@ export default function Home() {
   );
 }
 
-function UploadModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) {
+function UploadModal({ 
+  selectedTrack, 
+  onClose, 
+  onSuccess 
+}: { 
+  selectedTrack?: JuiceTrack | null, 
+  onClose: () => void, 
+  onSuccess: () => void 
+}) {
   const [isUploading, setIsUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
   
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!file) return alert("Please select a music file");
+    if (!file) return alert("Please select a music file (.mp3 / .wav)");
     
     setIsUploading(true);
     
@@ -241,8 +379,8 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
       
       const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
 
-      // 2. Upload Cover Art (if selected)
-      let coverUrl = null;
+      // 2. Upload Cover Art (if selected file or pre-filled URL)
+      let coverUrl = selectedTrack?.coverUrl || null;
       if (cover) {
         const coverPath = `covers/${Date.now()}-${cover.name.replace(/\s+/g, '_')}`;
         const { error: coverError } = await supabase.storage
@@ -286,7 +424,7 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
     <div className={styles.modalOverlay}>
       <div className={`${styles.modalContent} glass-panel animate-fade-in`}>
         <div className={styles.modalHeader}>
-          <h3>Upload Music</h3>
+          <h3>{selectedTrack ? `Upload Audio for "${selectedTrack.name}"` : "Upload Music"}</h3>
           <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
         </div>
         
@@ -308,7 +446,9 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
             <label>Cover Art (Optional)</label>
             <div className={styles.fileInputContainer} style={{ padding: '1rem' }} onClick={() => document.getElementById('coverFileInput')?.click()}>
               <ImageIcon size={24} color="var(--text-muted)" style={{ margin: '0 auto 0.5rem' }} />
-              <div style={{ fontSize: '0.85rem' }}>{cover ? cover.name : "Select Image"}</div>
+              <div style={{ fontSize: '0.85rem' }}>
+                {cover ? cover.name : selectedTrack?.coverUrl ? "Using Juice WRLD API Cover Art" : "Select Image"}
+              </div>
               <input 
                 id="coverFileInput"
                 type="file" 
@@ -321,30 +461,54 @@ function UploadModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: (
 
           <div className={styles.formGroup}>
             <label>Title</label>
-            <input name="title" className="input-field" placeholder="Song Title" required defaultValue={file?.name.replace(/\.[^/.]+$/, "") || ""} />
+            <input 
+              name="title" 
+              className="input-field" 
+              placeholder="Song Title" 
+              required 
+              defaultValue={selectedTrack?.name || file?.name.replace(/\.[^/.]+$/, "") || ""} 
+            />
           </div>
           
           <div className={styles.formGroup}>
             <label>Artist</label>
-            <input name="artist" className="input-field" placeholder="Artist Name" required />
+            <input 
+              name="artist" 
+              className="input-field" 
+              placeholder="Artist Name" 
+              required 
+              defaultValue={selectedTrack ? "Juice WRLD" : ""} 
+            />
           </div>
 
           <div style={{ display: 'flex', gap: '1rem' }}>
             <div className={styles.formGroup} style={{ flex: 1 }}>
-              <label>Album (Optional)</label>
-              <input name="album" className="input-field" placeholder="Album Name" />
+              <label>Album / Era</label>
+              <input 
+                name="album" 
+                className="input-field" 
+                placeholder="Album Name" 
+                defaultValue={selectedTrack?.era || ""} 
+              />
             </div>
             <div className={styles.formGroup} style={{ flex: 1 }}>
-              <label>Year (Optional)</label>
-              <input name="year" type="number" className="input-field" placeholder="2024" />
+              <label>Year</label>
+              <input 
+                name="year" 
+                type="number" 
+                className="input-field" 
+                placeholder="2024" 
+                defaultValue={selectedTrack?.releaseDate ? new Date(selectedTrack.releaseDate).getFullYear() || "" : ""} 
+              />
             </div>
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isUploading}>
-            {isUploading ? "Uploading..." : "Upload Track"}
+            {isUploading ? "Uploading Track..." : "Upload to Apollo"}
           </button>
         </form>
       </div>
     </div>
   );
 }
+
