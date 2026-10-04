@@ -17,6 +17,8 @@ type Song = {
   year: number | null;
   url: string;
   cover_url: string | null;
+  is_liked?: boolean;
+  plays?: number;
   created_at?: string;
 };
 
@@ -39,7 +41,6 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites'>('my-library');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
-  const [streamCount, setStreamCount] = useState<number>(0);
   
   // Juice WRLD API state
   const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
@@ -54,25 +55,20 @@ export default function Home() {
   useEffect(() => {
     fetchSongs();
     fetchJuiceTracks("Lucid Dreams");
-
-    try {
-      const savedLikes = localStorage.getItem('apollo_liked_songs');
-      if (savedLikes) setLikedSongIds(JSON.parse(savedLikes));
-
-      const savedStreams = localStorage.getItem('apollo_stream_count');
-      if (savedStreams) setStreamCount(parseInt(savedStreams, 10));
-    } catch (e) {
-      console.error("Failed to load account stats", e);
-    }
   }, []);
 
   const fetchSongs = async () => {
     try {
       const { data, error } = await supabase.from('songs').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      if (data) setSongs(data);
+      if (data) {
+        setSongs(data);
+        // Hydrate liked songs directly from Supabase Database (cross-platform sync)
+        const likedIds = data.filter((s: Song) => s.is_liked).map((s: Song) => s.id);
+        setLikedSongIds(likedIds);
+      }
     } catch (e) {
-      console.error("Failed to fetch songs", e);
+      console.error("Failed to fetch songs from Supabase", e);
     }
   };
 
@@ -103,18 +99,28 @@ export default function Home() {
     }
   };
 
-  const toggleLike = (id: string, e?: React.MouseEvent) => {
+  const toggleLike = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setLikedSongIds(prev => {
-      const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
-      try {
-        localStorage.setItem('apollo_liked_songs', JSON.stringify(next));
-      } catch (err) {}
-      return next;
-    });
+    const isCurrentlyLiked = likedSongIds.includes(id);
+    const newLikedState = !isCurrentlyLiked;
+
+    // Optimistic state update
+    setLikedSongIds(prev =>
+      newLikedState ? [...prev, id] : prev.filter(item => item !== id)
+    );
+    setSongs(prev =>
+      prev.map(s => s.id === id ? { ...s, is_liked: newLikedState } : s)
+    );
+
+    // Save to Supabase Cloud Database (syncs on all devices & accounts!)
+    try {
+      await supabase.from('songs').update({ is_liked: newLikedState }).eq('id', id);
+    } catch (err) {
+      console.error("Failed to update like status in Supabase", err);
+    }
   };
 
-  const playSong = (song: Song) => {
+  const playSong = async (song: Song) => {
     if (currentSong?.id === song.id) {
       togglePlay();
       return;
@@ -122,14 +128,19 @@ export default function Home() {
     setCurrentSong(song);
     setIsPlaying(true);
 
-    // Increment account stream count
-    setStreamCount(prev => {
-      const next = prev + 1;
-      try {
-        localStorage.setItem('apollo_stream_count', next.toString());
-      } catch (err) {}
-      return next;
-    });
+    const updatedPlays = (song.plays || 0) + 1;
+
+    // Optimistic state update
+    setSongs(prev =>
+      prev.map(s => s.id === song.id ? { ...s, plays: updatedPlays } : s)
+    );
+
+    // Save stream play count to Supabase Cloud Database
+    try {
+      await supabase.from('songs').update({ plays: updatedPlays }).eq('id', song.id);
+    } catch (err) {
+      console.error("Failed to update play count in Supabase", err);
+    }
 
     if (audioRef.current) {
       audioRef.current.src = song.url;
@@ -193,6 +204,11 @@ export default function Home() {
     ? songs.filter(s => likedSongIds.includes(s.id))
     : songs;
 
+  // Real-time Supabase Database Account Metrics (Cross-Platform Persistence)
+  const totalLikesCount = songs.filter(s => s.is_liked || likedSongIds.includes(s.id)).length;
+  const totalTracksCount = songs.length;
+  const totalStreamsCount = songs.reduce((sum, s) => sum + (s.plays || 0), 0);
+
   return (
     <>
       {/* Dynamic Aurora Ambient Background */}
@@ -249,7 +265,7 @@ export default function Home() {
                 onClick={() => setActiveTab('favorites')}
               >
                 <Heart size={18} style={{ color: 'var(--neon-pink)' }} /> Favourites
-                <span className={styles.dockBadge}>{likedSongIds.length}</span>
+                <span className={styles.dockBadge}>{totalLikesCount}</span>
               </button>
 
               <button className={styles.navItem} onClick={() => setActiveTab('my-library')}>
@@ -402,15 +418,15 @@ export default function Home() {
             <div className={styles.statsRow}>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>LIKES</span>
-                <span className={styles.statVal}>{likedSongIds.length}</span>
+                <span className={styles.statVal}>{totalLikesCount}</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>TRACKS</span>
-                <span className={styles.statVal}>{songs.length}</span>
+                <span className={styles.statVal}>{totalTracksCount}</span>
               </div>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>TOTAL STREAMS</span>
-                <span className={styles.statVal}>{streamCount.toLocaleString()}</span>
+                <span className={styles.statVal}>{totalStreamsCount.toLocaleString()}</span>
               </div>
             </div>
 
