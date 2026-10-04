@@ -366,6 +366,13 @@ function UploadModal({
     e.preventDefault();
     if (!file) return alert("Please select a music file (.mp3 / .wav)");
     
+    // Capture FormData before any await calls, as e.currentTarget can become null later
+    const formData = new FormData(e.currentTarget);
+    const title = formData.get('title') as string;
+    const artist = formData.get('artist') as string;
+    const album = formData.get('album') as string;
+    const year = formData.get('year') as string;
+
     setIsUploading(true);
     
     try {
@@ -394,11 +401,6 @@ function UploadModal({
       }
 
       // 3. Save to Database
-      const formData = new FormData(e.currentTarget);
-      const title = formData.get('title') as string;
-      const artist = formData.get('artist') as string;
-      const album = formData.get('album') as string;
-      const year = formData.get('year') as string;
 
       const { error: dbError } = await supabase.from('songs').insert({
         title,
