@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { 
   Play, Pause, SkipBack, SkipForward, Volume2, Upload, Music, Plus, X, 
   Image as ImageIcon, Search, Disc, Flame, Sparkles, Maximize2, Zap, 
-  Radio, Heart, List, Grid, Clock, BarChart3, Bookmark, Compass, ShieldCheck
+  Radio, Heart, List, Grid, Clock, BarChart3, Bookmark, Compass, ShieldCheck,
+  RotateCcw, RotateCw, Shuffle, Repeat, Repeat1, Smartphone
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { extractAudioMetadata } from "@/lib/id3";
@@ -42,6 +43,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites'>('my-library');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'track'>('off');
   
   // Juice WRLD API state
   const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
@@ -335,11 +338,32 @@ export default function Home() {
     setIsPlaying(!isPlaying);
   };
 
+  const skipForward10 = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
+    }
+  };
+
+  const skipBackward10 = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+    }
+  };
+
+  const toggleRepeatMode = () => {
+    setRepeatMode(prev => prev === 'off' ? 'all' : prev === 'all' ? 'track' : 'off');
+  };
+
   const nextSong = () => {
     if (!currentSong || songs.length === 0) return;
-    const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
-    const nextIndex = (currentIndex + 1) % songs.length;
-    playSong(songs[nextIndex]);
+    if (isShuffle) {
+      const randomIndex = Math.floor(Math.random() * songs.length);
+      playSong(songs[randomIndex]);
+    } else {
+      const currentIndex = songs.findIndex((s) => s.id === currentSong.id);
+      const nextIndex = (currentIndex + 1) % songs.length;
+      playSong(songs[nextIndex]);
+    }
   };
 
   const prevSong = () => {
@@ -348,6 +372,69 @@ export default function Home() {
     const prevIndex = (currentIndex - 1 + songs.length) % songs.length;
     playSong(songs[prevIndex]);
   };
+
+  const handleSongEnd = () => {
+    if (repeatMode === 'track' && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+    } else {
+      nextSong();
+    }
+  };
+
+  // iOS Media Session Integration (Lock Screen Controls)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator && currentSong) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentSong.title,
+          artist: currentSong.artist,
+          album: currentSong.album || "Apollo 999",
+          artwork: [
+            { src: currentSong.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80", sizes: "512x512", type: "image/jpeg" }
+          ]
+        });
+
+        navigator.mediaSession.setActionHandler('play', () => {
+          audioRef.current?.play();
+          setIsPlaying(true);
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+          audioRef.current?.pause();
+          setIsPlaying(false);
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+        navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+        navigator.mediaSession.setActionHandler('seekbackward', skipBackward10);
+        navigator.mediaSession.setActionHandler('seekforward', skipForward10);
+      } catch (err) {
+        console.warn("MediaSession error", err);
+      }
+    }
+  }, [currentSong, songs, isShuffle, repeatMode]);
+
+  // Keyboard Shortcuts (Space, Arrow Keys, Shift+Arrows)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        if (e.shiftKey) nextSong();
+        else skipForward10();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        if (e.shiftKey) prevSong();
+        else skipBackward10();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentSong, isPlaying, songs, isShuffle]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -893,12 +980,51 @@ export default function Home() {
           </div>
 
           <div className={styles.playerCenterControls}>
-            <div className={styles.controlButtons}>
-              <button className={styles.btnControlIcon} onClick={prevSong}><SkipBack size={20} fill="currentColor" /></button>
-              <button className={styles.btnPlayMain} onClick={togglePlay}>
+            <div className={styles.controlButtons} style={{ gap: '0.6rem' }}>
+              {/* Shuffle Toggle */}
+              <button 
+                className={styles.btnControlIcon} 
+                onClick={() => setIsShuffle(!isShuffle)}
+                style={{ color: isShuffle ? 'var(--neon-cyan)' : 'var(--text-muted)' }}
+                title={isShuffle ? "Shuffle On" : "Shuffle Off"}
+              >
+                <Shuffle size={16} />
+              </button>
+
+              {/* 10s Backward */}
+              <button className={styles.btnControlIcon} onClick={skipBackward10} title="Rewind 10 seconds">
+                <RotateCcw size={17} />
+              </button>
+
+              {/* Previous Song */}
+              <button className={styles.btnControlIcon} onClick={prevSong} title="Previous Song">
+                <SkipBack size={20} fill="currentColor" />
+              </button>
+
+              {/* Play / Pause Main Button */}
+              <button className={styles.btnPlayMain} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"}>
                 {isPlaying ? <Pause size={22} fill="black" /> : <Play size={22} fill="black" style={{ marginLeft: '2px' }} />}
               </button>
-              <button className={styles.btnControlIcon} onClick={nextSong}><SkipForward size={20} fill="currentColor" /></button>
+
+              {/* Next Song */}
+              <button className={styles.btnControlIcon} onClick={nextSong} title="Next Song">
+                <SkipForward size={20} fill="currentColor" />
+              </button>
+
+              {/* 10s Forward */}
+              <button className={styles.btnControlIcon} onClick={skipForward10} title="Skip 10 seconds">
+                <RotateCw size={17} />
+              </button>
+
+              {/* Repeat Mode Toggle */}
+              <button 
+                className={styles.btnControlIcon} 
+                onClick={toggleRepeatMode}
+                style={{ color: repeatMode !== 'off' ? 'var(--neon-pink)' : 'var(--text-muted)' }}
+                title={`Repeat: ${repeatMode}`}
+              >
+                {repeatMode === 'track' ? <Repeat1 size={17} /> : <Repeat size={17} />}
+              </button>
             </div>
             
             <div className={styles.progressContainer}>
@@ -976,17 +1102,76 @@ export default function Home() {
             </div>
 
             {currentSong && (
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                <button className={styles.btnControlIcon} onClick={prevSong}><SkipBack size={28} /></button>
+              <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                <button 
+                  className={styles.btnControlIcon} 
+                  onClick={() => setIsShuffle(!isShuffle)}
+                  style={{ color: isShuffle ? 'var(--neon-cyan)' : 'var(--text-muted)' }}
+                >
+                  <Shuffle size={20} />
+                </button>
+                <button className={styles.btnControlIcon} onClick={skipBackward10}><RotateCcw size={22} /></button>
+                <button className={styles.btnControlIcon} onClick={prevSong}><SkipBack size={26} /></button>
                 <button className={styles.btnPlayMain} style={{ width: '64px', height: '64px' }} onClick={togglePlay}>
                   {isPlaying ? <Pause size={28} fill="black" /> : <Play size={28} fill="black" style={{ marginLeft: '3px' }} />}
                 </button>
-                <button className={styles.btnControlIcon} onClick={nextSong}><SkipForward size={28} /></button>
+                <button className={styles.btnControlIcon} onClick={nextSong}><SkipForward size={26} /></button>
+                <button className={styles.btnControlIcon} onClick={skipForward10}><RotateCw size={22} /></button>
+                <button 
+                  className={styles.btnControlIcon} 
+                  onClick={toggleRepeatMode}
+                  style={{ color: repeatMode !== 'off' ? 'var(--neon-pink)' : 'var(--text-muted)' }}
+                >
+                  {repeatMode === 'track' ? <Repeat1 size={20} /> : <Repeat size={20} />}
+                </button>
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* iPhone / PWA Mobile Cyber Navigation Dock */}
+      <nav className={styles.mobileCyberDock}>
+        <button 
+          className={`${styles.mobileNavItem} ${activeTab === 'my-library' ? styles.mobileNavItemActive : ''}`}
+          onClick={() => setActiveTab('my-library')}
+        >
+          <Disc size={20} />
+          <span>Library</span>
+        </button>
+
+        <button 
+          className={`${styles.mobileNavItem} ${activeTab === 'juicewrld' ? styles.mobileNavItemActive : ''}`}
+          onClick={() => setActiveTab('juicewrld')}
+        >
+          <Flame size={20} style={{ color: activeTab === 'juicewrld' ? 'var(--neon-pink)' : 'inherit' }} />
+          <span>Juice 999</span>
+        </button>
+
+        <button 
+          className={`${styles.mobileNavItem} ${activeTab === 'favorites' ? styles.mobileNavItemActive : ''}`}
+          onClick={() => setActiveTab('favorites')}
+        >
+          <Heart size={20} style={{ color: activeTab === 'favorites' ? 'var(--neon-pink)' : 'inherit' }} />
+          <span>Favorites</span>
+        </button>
+
+        <button 
+          className={styles.mobileNavItem}
+          onClick={() => setIsVisualizerOpen(true)}
+        >
+          <BarChart3 size={20} style={{ color: 'var(--neon-cyan)' }} />
+          <span>Studio</span>
+        </button>
+
+        <button 
+          className={styles.mobileNavItem}
+          onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}
+        >
+          <Upload size={20} style={{ color: 'var(--neon-amber)' }} />
+          <span>Upload</span>
+        </button>
+      </nav>
 
       {/* Upload Modal */}
       {isModalOpen && (

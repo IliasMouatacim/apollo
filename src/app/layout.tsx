@@ -1,9 +1,26 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Apollo",
-  description: "Your personal premium music streaming platform.",
+  title: "Apollo 999 - Cyber Music Streamer",
+  description: "Next-gen cyber music streaming platform & Juice WRLD Vault.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Apollo 999",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#05060a",
 };
 
 export default function RootLayout({
@@ -13,6 +30,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Apollo" />
+        <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=180&q=80" />
+      </head>
       <body>
         <main className="app-container">
           {children}

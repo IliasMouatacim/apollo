@@ -939,20 +939,76 @@
   box-shadow: 0 0 30px rgba(0, 240, 255, 0.3) !important;
 }
 
+/* ========= IPHONE MOBILE DOCK & SAFE AREA PADDING ========= */
+.mobileCyberDock {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(8, 11, 18, 0.94);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-top: 1px solid var(--border-glass);
+  z-index: 100;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.mobileNavItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease;
+}
+
+.mobileNavItemActive {
+  color: var(--neon-cyan) !important;
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
 /* ========= RESPONSIVE DESIGN ========= */
 @media (max-width: 1024px) {
   .cyberDock { width: 200px; padding: 1.25rem 0.85rem; }
-  .heroStage { margin: 1.5rem 1.5rem 1rem 1.5rem; padding: 1.75rem; flex-direction: column; text-align: center; gap: 1.5rem; }
-  .vinylWrapper { display: none; }
+  .heroRowSplit { grid-template-columns: 1fr; margin: 1rem 1.5rem; }
   .gridSection { padding: 1rem 1.5rem; }
   .topBar { padding: 1rem 1.5rem; }
 }
 
 @media (max-width: 768px) {
   .cyberDock { display: none; }
-  .cyberPlayer { padding: 0 1rem; height: 90px; }
+  .mobileCyberDock { display: flex; }
+  .contentArea {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+  .cyberPlayer {
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding: 0 0.85rem;
+    height: 75px;
+    background: rgba(9, 11, 18, 0.94);
+  }
   .playerRightExtras { display: none; }
-  .playerTrackMeta { width: auto; }
+  .playerTrackMeta { max-width: 140px; }
+  .topBar { padding: 0.85rem 1rem; }
+  .searchBox { max-width: 100%; }
+  .heroRowSplit { grid-template-columns: 1fr; margin: 1rem; }
+  .statsRow { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+  .statBox { padding: 0.6rem 0.5rem; text-align: center; }
+  .statVal { font-size: 1.2rem; }
 }
+
 
 
