@@ -7,6 +7,7 @@ import {
   Radio, Heart, List, Grid, Clock, BarChart3, Bookmark, Compass, ShieldCheck
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { extractAudioMetadata } from "@/lib/id3";
 import styles from "./page.module.css";
 
 type Song = {
@@ -1015,6 +1016,16 @@ export default function Home() {
   );
 }
 
+type ParsedTrackItem = {
+  file: File;
+  title: string;
+  artist: string;
+  album: string;
+  year: number | null;
+  coverBlob: Blob | null;
+  coverPreviewUrl: string | null;
+};
+
 function UploadModal({ 
   selectedTrack, 
   initialFiles = [],
@@ -1031,11 +1042,40 @@ function UploadModal({
   const [cover, setCover] = useState<File | null>(null);
   const [isDropzoneActive, setIsDropzoneActive] = useState(false);
   
+  const [parsedTracks, setParsedTracks] = useState<ParsedTrackItem[]>([]);
+  const [isParsingMetadata, setIsParsingMetadata] = useState(false);
+
   useEffect(() => {
     if (initialFiles.length > 0) {
       setFiles(initialFiles);
     }
   }, [initialFiles]);
+
+  useEffect(() => {
+    if (files.length > 0) {
+      setIsParsingMetadata(true);
+      Promise.all(files.map(async (file) => {
+        const meta = await extractAudioMetadata(file);
+        return {
+          file,
+          title: meta.title || file.name.replace(/\.[^/.]+$/, ""),
+          artist: meta.artist || (selectedTrack ? "Juice WRLD" : ""),
+          album: meta.album || selectedTrack?.era || "",
+          year: meta.year || (selectedTrack?.releaseDate ? new Date(selectedTrack.releaseDate).getFullYear() || null : null),
+          coverBlob: meta.coverBlob,
+          coverPreviewUrl: meta.coverPreviewUrl
+        };
+      })).then((results) => {
+        setParsedTracks(results);
+        setIsParsingMetadata(false);
+      }).catch(err => {
+        console.error("Failed to parse metadata", err);
+        setIsParsingMetadata(false);
+      });
+    } else {
+      setParsedTracks([]);
+    }
+  }, [files, selectedTrack]);
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1043,25 +1083,25 @@ function UploadModal({
     
     // Capture FormData before any await calls
     const formData = new FormData(e.currentTarget);
-    const titleInput = formData.get('title') as string;
-    const artistInput = formData.get('artist') as string;
-    const albumInput = formData.get('album') as string;
-    const yearInput = formData.get('year') as string;
+    const globalTitle = formData.get('title') as string;
+    const globalArtist = formData.get('artist') as string;
+    const globalAlbum = formData.get('album') as string;
+    const globalYear = formData.get('year') as string;
 
     setIsUploading(true);
     
     try {
-      // 1. Upload Cover Art if provided
-      let coverUrl = selectedTrack?.coverUrl || null;
+      // 1. Upload Fallback Cover Art if provided via file input
+      let globalCoverUrl = selectedTrack?.coverUrl || null;
       if (cover) {
-        const coverPath = `covers/${Date.now()}-${cover.name.replace(/\s+/g, '_')}`;
+        const coverPath = `covers/${Date.now()}-global-${cover.name.replace(/\s+/g, '_')}`;
         const { error: coverError } = await supabase.storage
           .from('media')
           .upload(coverPath, cover);
           
         if (!coverError) {
           const { data: coverUrlData } = supabase.storage.from('media').getPublicUrl(coverPath);
-          coverUrl = coverUrlData.publicUrl;
+          globalCoverUrl = coverUrlData.publicUrl;
         }
       }
 
@@ -1074,31 +1114,51 @@ function UploadModal({
         cover_url: string | null;
       }> = [];
 
-      // 2. Loop through each audio file selected
-      for (let i = 0; i < files.length; i++) {
-        const audioFile = files[i];
-        const musicPath = `music/${Date.now()}-${i}-${audioFile.name.replace(/\s+/g, '_')}`;
+      // 2. Loop through each audio file and upload individual audio & embedded cover art
+      for (let i = 0; i < parsedTracks.length; i++) {
+        const item = parsedTracks[i];
         
+        // Upload Audio File
+        const musicPath = `music/${Date.now()}-${i}-${item.file.name.replace(/\s+/g, '_')}`;
         const { error: musicError } = await supabase.storage
           .from('media')
-          .upload(musicPath, audioFile);
+          .upload(musicPath, item.file);
           
         if (musicError) throw musicError;
         
         const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
 
-        // Deduce song title: use custom title if single file, else cleaning filename
-        const songTitle = files.length === 1 
-          ? (titleInput || audioFile.name.replace(/\.[^/.]+$/, ""))
-          : audioFile.name.replace(/\.[^/.]+$/, "");
+        // Upload Individual Track Embedded Artwork if present
+        let trackCoverUrl = globalCoverUrl;
+        if (item.coverBlob) {
+          try {
+            const coverPath = `covers/${Date.now()}-${i}-embedded.jpg`;
+            const { error: itemCoverErr } = await supabase.storage
+              .from('media')
+              .upload(coverPath, item.coverBlob, { contentType: item.coverBlob.type || 'image/jpeg' });
+            
+            if (!itemCoverErr) {
+              const { data: itemCoverData } = supabase.storage.from('media').getPublicUrl(coverPath);
+              trackCoverUrl = itemCoverData.publicUrl;
+            }
+          } catch (err) {
+            console.warn("Failed to upload embedded cover for track:", item.title, err);
+          }
+        }
+
+        // Deduce metadata
+        const finalTitle = item.title || (files.length === 1 && globalTitle ? globalTitle : item.file.name.replace(/\.[^/.]+$/, ""));
+        const finalArtist = item.artist || globalArtist || "Juice WRLD";
+        const finalAlbum = item.album || globalAlbum || null;
+        const finalYear = item.year || (globalYear ? parseInt(globalYear, 10) : null);
 
         songEntriesToInsert.push({
-          title: songTitle,
-          artist: artistInput || "Juice WRLD",
-          album: albumInput || null,
-          year: yearInput ? parseInt(yearInput, 10) : null,
+          title: finalTitle,
+          artist: finalArtist,
+          album: finalAlbum,
+          year: finalYear,
           url: musicUrl,
-          cover_url: coverUrl
+          cover_url: trackCoverUrl
         });
       }
 
@@ -1149,7 +1209,7 @@ function UploadModal({
             <Music size={36} style={{ color: 'var(--neon-cyan)', margin: '0 auto 0.75rem' }} />
             <div style={{ fontWeight: 600, color: '#fff' }}>
               {files.length > 0 
-                ? `${files.length} Audio File(s) Ready (${files.map(f => f.name).join(", ").slice(0, 40)}...)` 
+                ? `${files.length} Audio File(s) Ready` 
                 : "Drag & drop MP3 / WAV audio file(s) here or click to select"}
             </div>
             <input 
@@ -1166,6 +1226,46 @@ function UploadModal({
               required={files.length === 0}
             />
           </div>
+
+          {/* PARSED TRACK PREVIEW LIST WITH INDIVIDUAL COVERS */}
+          {isParsingMetadata ? (
+            <div style={{ padding: '0.85rem', textAlign: 'center', color: 'var(--neon-cyan)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+              <div className="animate-spin-slow" style={{ display: 'inline-block', marginRight: '0.5rem' }}>
+                <Sparkles size={16} />
+              </div>
+              Extracting track names & embedded cover artwork...
+            </div>
+          ) : parsedTracks.length > 0 && (
+            <div style={{ marginBottom: '1.2rem', maxHeight: '180px', overflowY: 'auto', background: 'rgba(5, 8, 15, 0.65)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--neon-pink)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Detected Tracks ({parsedTracks.length} Songs)
+              </div>
+              {parsedTracks.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0', borderBottom: idx < parsedTracks.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                  {item.coverPreviewUrl ? (
+                    <img src={item.coverPreviewUrl} alt="Cover" style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
+                  ) : (
+                    <div style={{ width: '36px', height: '36px', borderRadius: '6px', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Music size={18} style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.title}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.artist || 'Juice WRLD'} {item.album ? `• ${item.album}` : ''}
+                    </div>
+                  </div>
+                  {item.coverBlob && (
+                    <span style={{ fontSize: '0.65rem', background: 'rgba(0, 240, 255, 0.15)', color: 'var(--neon-cyan)', padding: '0.15rem 0.45rem', borderRadius: '10px', border: '1px solid rgba(0, 240, 255, 0.3)' }}>
+                      Own Cover
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ marginBottom: '1.2rem' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
