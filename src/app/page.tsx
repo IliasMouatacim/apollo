@@ -103,7 +103,7 @@ export default function Home() {
 
   // Visualizer Studio Tabs & Canvas Engine State
   const [visualizerTab, setVisualizerTab] = useState<'canvas' | 'eq' | 'lyrics'>('canvas');
-  const [canvasMode, setCanvasMode] = useState<'spectrum' | 'waveform' | 'circular'>('spectrum');
+  const [canvasMode, setCanvasMode] = useState<'circular'>('circular');
 
   // Web Audio API & DSP Equalizer / Speed State
   const [eqGains, setEqGains] = useState<number[]>([0, 0, 0, 0, 0]);
@@ -386,96 +386,87 @@ export default function Home() {
 
       ctx.clearRect(0, 0, width, height);
 
+      const centerX = width / 2;
+      const centerY = height / 2;
+      const radius = Math.min(width, height) * 0.28;
+
       if (analyserNodeRef.current && isPlaying) {
         const analyser = analyserNodeRef.current;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
 
-        if (canvasMode === 'spectrum') {
-          const bufferLength = analyser.frequencyBinCount;
-          const dataArray = new Uint8Array(bufferLength);
-          analyser.getByteFrequencyData(dataArray);
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff007f';
 
-          const barWidth = (width / bufferLength) * 2.4;
-          let x = 0;
+        for (let i = 0; i < bufferLength; i += 2) {
+          const value = dataArray[i];
+          const angle = (i / bufferLength) * Math.PI * 2;
+          const barLen = (value / 255) * 75;
 
-          for (let i = 0; i < bufferLength; i++) {
-            const barHeight = (dataArray[i] / 255) * (height * 0.85);
+          const x1 = centerX + Math.cos(angle) * radius;
+          const y1 = centerY + Math.sin(angle) * radius;
+          const x2 = centerX + Math.cos(angle) * (radius + barLen);
+          const y2 = centerY + Math.sin(angle) * (radius + barLen);
 
-            const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
-            gradient.addColorStop(0, '#00f0ff');
-            gradient.addColorStop(0.5, '#ff007f');
-            gradient.addColorStop(1, '#9d4edd');
-
-            ctx.fillStyle = gradient;
-            ctx.shadowBlur = 12;
-            ctx.shadowColor = '#00f0ff';
-            ctx.fillRect(x, height - barHeight, barWidth - 2, barHeight);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(x, height - barHeight - 4, barWidth - 2, 3);
-
-            x += barWidth;
-          }
-        } else if (canvasMode === 'waveform') {
-          const bufferLength = analyser.fftSize;
-          const dataArray = new Uint8Array(bufferLength);
-          analyser.getByteTimeDomainData(dataArray);
-
+          ctx.strokeStyle = i % 4 === 0 ? '#00f0ff' : '#ff007f';
           ctx.lineWidth = 3;
-          ctx.strokeStyle = '#00f0ff';
-          ctx.shadowBlur = 18;
-          ctx.shadowColor = '#00f0ff';
           ctx.beginPath();
-
-          const sliceWidth = width / bufferLength;
-          let x = 0;
-
-          for (let i = 0; i < bufferLength; i++) {
-            const v = dataArray[i] / 128.0;
-            const y = (v * height) / 2;
-
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-
-            x += sliceWidth;
-          }
-
-          ctx.lineTo(width, height / 2);
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
           ctx.stroke();
-        } else if (canvasMode === 'circular') {
-          const bufferLength = analyser.frequencyBinCount;
-          const dataArray = new Uint8Array(bufferLength);
-          analyser.getByteFrequencyData(dataArray);
-
-          const centerX = width / 2;
-          const centerY = height / 2;
-          const radius = Math.min(width, height) * 0.28;
-
-          ctx.shadowBlur = 20;
-          ctx.shadowColor = '#ff007f';
-
-          for (let i = 0; i < bufferLength; i += 2) {
-            const value = dataArray[i];
-            const angle = (i / bufferLength) * Math.PI * 2;
-            const barLen = (value / 255) * 75;
-
-            const x1 = centerX + Math.cos(angle) * radius;
-            const y1 = centerY + Math.sin(angle) * radius;
-            const x2 = centerX + Math.cos(angle) * (radius + barLen);
-            const y2 = centerY + Math.sin(angle) * (radius + barLen);
-
-            ctx.strokeStyle = i % 4 === 0 ? '#00f0ff' : '#ff007f';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.stroke();
-          }
         }
       } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.font = '600 14px Space Grotesk';
+        // Idle concentric ring outline when paused or unstarted
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00f0ff';
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // RENDER SONG TITLE & ARTIST CENTERED INSIDE THE CIRCLE RING
+      if (currentSong) {
+        ctx.save();
         ctx.textAlign = 'center';
-        ctx.fillText('⚡ Play audio to start real-time spectrum engine', width / 2, height / 2);
+        ctx.textBaseline = 'middle';
+
+        let titleText = currentSong.title;
+        if (titleText.length > 22) {
+          titleText = titleText.substring(0, 20) + '...';
+        }
+
+        // Title Text inside circle
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#00f0ff';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 13px "Space Grotesk", sans-serif';
+        ctx.fillText(titleText, centerX, centerY - 7);
+
+        // Artist Text inside circle
+        let artistText = currentSong.artist;
+        if (artistText.length > 24) {
+          artistText = artistText.substring(0, 22) + '...';
+        }
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#ff007f';
+        ctx.fillStyle = 'rgba(255, 0, 127, 0.9)';
+        ctx.font = '600 10px "Space Grotesk", sans-serif';
+        ctx.fillText(artistText, centerX, centerY + 11);
+
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00f0ff';
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.7)';
+        ctx.font = '600 12px "Space Grotesk", sans-serif';
+        ctx.fillText('⚡ APOLLO AUDIO', centerX, centerY);
+        ctx.restore();
       }
 
       animationFrameRef.current = requestAnimationFrame(render);
@@ -487,7 +478,7 @@ export default function Home() {
       running = false;
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [isVisualizerOpen, visualizerTab, canvasMode, isPlaying]);
+  }, [isVisualizerOpen, visualizerTab, canvasMode, isPlaying, currentSong]);
 
   // Realtime Listening Party Synchronization
   useEffect(() => {
@@ -1935,25 +1926,12 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Canvas Mode Switcher */}
+                {/* Pulse Ring Active Indicator */}
                 <div className={styles.modePills}>
                   <button 
-                    className={`${styles.modePill} ${canvasMode === 'spectrum' ? styles.modePillActive : ''}`}
-                    onClick={() => setCanvasMode('spectrum')}
+                    className={`${styles.modePill} ${styles.modePillActive}`}
                   >
-                    Cyber Spectrum
-                  </button>
-                  <button 
-                    className={`${styles.modePill} ${canvasMode === 'waveform' ? styles.modePillActive : ''}`}
-                    onClick={() => setCanvasMode('waveform')}
-                  >
-                    Oscilloscope Wave
-                  </button>
-                  <button 
-                    className={`${styles.modePill} ${canvasMode === 'circular' ? styles.modePillActive : ''}`}
-                    onClick={() => setCanvasMode('circular')}
-                  >
-                    Pulse Ring
+                    Pulse Ring Mode
                   </button>
                 </div>
               </>
