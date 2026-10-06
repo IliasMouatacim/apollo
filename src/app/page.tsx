@@ -6,7 +6,7 @@ import {
   Image as ImageIcon, Search, Disc, Flame, Sparkles, Maximize2, Zap, 
   Radio, Heart, List, Grid, Clock, BarChart3, Bookmark, Compass, ShieldCheck,
   RotateCcw, RotateCw, Shuffle, Repeat, Repeat1, Smartphone, ListMusic,
-  Sliders, Activity, FolderPlus, ArrowUp, ArrowDown, Trash2, AlignLeft, Layers, VolumeX,
+  Sliders, Activity, FolderPlus, ArrowUp, ArrowDown, Trash2, Layers, VolumeX,
   User as UserIcon, LogIn, LogOut, UserPlus, KeyRound, Mail, Crown
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -36,23 +36,7 @@ type Playlist = {
   songIds: string[];
 };
 
-type LyricLine = {
-  time: number;
-  text: string;
-};
 
-const MOCK_LYRICS: LyricLine[] = [
-  { time: 0, text: "♪ (Apollo Audio Engine Cyber Intro) ♪" },
-  { time: 5, text: "I still see your shadows in my room" },
-  { time: 10, text: "Can't take back the love that I gave you" },
-  { time: 15, text: "It's to the point where I love and I hate you" },
-  { time: 20, text: "And I cannot change you, so I must replace you" },
-  { time: 25, text: "Easier said than done, I thought you were the one" },
-  { time: 30, text: "Listening to my heart instead of my head" },
-  { time: 35, text: "You found another one, but I am the better one" },
-  { time: 40, text: "I won't let you forget me... Cyber Synth Vault" },
-  { time: 50, text: "♪ (Slowed & Reverb Cyber Synth Solo) ♪" }
-];
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
@@ -102,7 +86,7 @@ export default function Home() {
   const [newPlaylistColor, setNewPlaylistColor] = useState("#00f0ff");
 
   // Visualizer Studio Tabs & Canvas Engine State
-  const [visualizerTab, setVisualizerTab] = useState<'canvas' | 'eq' | 'lyrics'>('canvas');
+  const [visualizerTab, setVisualizerTab] = useState<'canvas' | 'eq'>('canvas');
   const [canvasMode, setCanvasMode] = useState<'circular'>('circular');
 
   // Web Audio API & DSP Equalizer / Speed State
@@ -112,10 +96,6 @@ export default function Home() {
   const [isSlowedAndReverb, setIsSlowedAndReverb] = useState(false);
   const [isNightcore, setIsNightcore] = useState(false);
   const [isBassBoost, setIsBassBoost] = useState(false);
-
-  // Live Lyrics Fetch State
-  const [liveLyrics, setLiveLyrics] = useState<string | null>(null);
-  const [isFetchingLyrics, setIsFetchingLyrics] = useState(false);
 
   // Audio & Web Audio Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -534,28 +514,7 @@ export default function Home() {
     }
   };
 
-  // Fetch Live Lyrics
-  useEffect(() => {
-    if (!currentSong) return;
-    const fetchLyricsData = async () => {
-      setIsFetchingLyrics(true);
-      setLiveLyrics(null);
-      try {
-        const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(currentSong.artist)}/${encodeURIComponent(currentSong.title)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setLiveLyrics(data.lyrics || "No live lyrics found for this track.");
-        } else {
-          setLiveLyrics("No live lyrics found for this track.");
-        }
-      } catch (err) {
-        setLiveLyrics("Failed to fetch live lyrics.");
-      } finally {
-        setIsFetchingLyrics(false);
-      }
-    };
-    fetchLyricsData();
-  }, [currentSong]);
+
 
   useEffect(() => {
     let dragCounter = 0;
@@ -1899,12 +1858,6 @@ export default function Home() {
                 >
                   <Sliders size={15} /> 5-Band EQ & Speed
                 </button>
-                <button 
-                  className={`${styles.modePill} ${visualizerTab === 'lyrics' ? styles.modePillActive : ''}`}
-                  onClick={() => setVisualizerTab('lyrics')}
-                >
-                  <AlignLeft size={15} /> Karaoke Lyrics
-                </button>
               </div>
             </div>
 
@@ -2021,41 +1974,7 @@ export default function Home() {
               </div>
             )}
 
-            {visualizerTab === 'lyrics' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', width: '100%' }}>
-                {/* Synced Karaoke Lyrics */}
-                <div className={styles.lyricsContainer}>
-                  {MOCK_LYRICS.map((line, idx) => {
-                    const isActive = progress >= line.time && (idx === MOCK_LYRICS.length - 1 || progress < MOCK_LYRICS[idx + 1].time);
-                    return (
-                      <div 
-                        key={idx} 
-                        className={`${styles.lyricLine} ${isActive ? styles.lyricLineActive : ''}`}
-                        onClick={() => {
-                          if (audioRef.current) audioRef.current.currentTime = line.time;
-                        }}
-                      >
-                        {line.text}
-                      </div>
-                    );
-                  })}
-                </div>
 
-                {/* API Live Fetched Lyrics Box */}
-                {liveLyrics && (
-                  <div className={styles.lyricsPanel}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--neon-cyan)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                      API Live Song Lyrics
-                    </div>
-                    {isFetchingLyrics ? (
-                      <div className={styles.lyricsLoading}>Fetching live lyrics for track...</div>
-                    ) : (
-                      <pre className={styles.lyricsText}>{liveLyrics}</pre>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {currentSong && (
               <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
