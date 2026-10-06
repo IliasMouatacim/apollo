@@ -34,24 +34,85 @@ type JuiceTrack = {
   coverUrl?: string;
 };
 
+type Playlist = {
+  id: string;
+  name: string;
+  songIds: string[];
+};
+
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites'>('my-library');
+  const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites' | 'playlists'>('my-library');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'track'>('off');
   
+  // Party Mode State
+  const [isPartyMode, setIsPartyMode] = useState(false);
+  const partyChannelRef = useRef<any>(null);
+  
+  // Audio Effects State
+  const [isNightcore, setIsNightcore] = useState(false);
+  const [isBassBoost, setIsBassBoost] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const bassNodeRef = useRef<BiquadFilterNode | null>(null);
+  
+  // Lyrics State
+  const [lyrics, setLyrics] = useState<string | null>(null);
+  const [isFetchingLyrics, setIsFetchingLyrics] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+
   // Juice WRLD API state
   const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
   const [juiceSearch, setJuiceSearch] = useState("");
   const [isSearchingJuice, setIsSearchingJuice] = useState(false);
   const [selectedJuiceTrack, setSelectedJuiceTrack] = useState<JuiceTrack | null>(null);
   const [importingAlbumTitle, setImportingAlbumTitle] = useState<string | null>(null);
+
+  // Playlists State
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('apollo_playlists');
+    if (saved) {
+      try {
+        setPlaylists(JSON.parse(saved));
+      } catch (e) {}
+    }
+  }, []);
+
+  const savePlaylists = (newPlaylists: Playlist[]) => {
+    setPlaylists(newPlaylists);
+    localStorage.setItem('apollo_playlists', JSON.stringify(newPlaylists));
+  };
+
+  const createPlaylist = () => {
+    if (!newPlaylistName.trim()) return;
+    const newList: Playlist = {
+      id: Date.now().toString(),
+      name: newPlaylistName.trim(),
+      songIds: []
+    };
+    savePlaylists([...playlists, newList]);
+    setNewPlaylistName("");
+  };
+
+  const addToPlaylist = (playlistId: string, songId: string) => {
+    savePlaylists(playlists.map(p => {
+      if (p.id === playlistId && !p.songIds.includes(songId)) {
+        return { ...p, songIds: [...p.songIds, songId] };
+      }
+      return p;
+    }));
+  };
 
   // Iconic Juice WRLD Full Discography Presets for 1-Click Batch Import
   const JUICE_WRLD_ALBUMS = [
@@ -316,8 +377,12 @@ export default function Home() {
     );
 
     if (audioRef.current) {
+      if (!audioContextRef.current) {
+        initAudioContext();
+      }
       audioRef.current.src = song.url;
       audioRef.current.play().catch(e => console.error("Playback failed:", e));
+      broadcastPlaybackState(true, song);
     }
 
     // Save stream play count to Supabase Cloud Database (don't await this before playing to prevent mobile background play issues)
@@ -332,21 +397,27 @@ export default function Home() {
     if (!audioRef.current || !currentSong) return;
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
+      broadcastPlaybackState(false);
     } else {
-      audioRef.current.play();
+      if (!audioContextRef.current) initAudioContext();
+      audioRef.current.play().catch(e => console.error("Playback failed:", e));
+      setIsPlaying(true);
+      broadcastPlaybackState(true);
     }
-    setIsPlaying(!isPlaying);
   };
 
   const skipForward10 = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.min(audioRef.current.duration || 0, audioRef.current.currentTime + 10);
+      broadcastPlaybackState(isPlaying);
     }
   };
 
   const skipBackward10 = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      broadcastPlaybackState(isPlaying);
     }
   };
 
@@ -410,6 +481,132 @@ export default function Home() {
       }
     }
   }, [currentSong, songs, isShuffle, repeatMode]);
+
+  // Initialize Web Audio API for effects
+  const initAudioContext = () => {
+    if (!audioRef.current || audioContextRef.current) return;
+    
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioContext();
+      audioContextRef.current = ctx;
+
+      const source = ctx.createMediaElementSource(audioRef.current);
+      sourceNodeRef.current = source;
+
+      // Create Bass Boost Filter (LowShelf)
+      const bassFilter = ctx.createBiquadFilter();
+      bassFilter.type = 'lowshelf';
+      bassFilter.frequency.value = 150; // Boost frequencies below 150Hz
+      bassFilter.gain.value = 0; // Default 0dB
+      bassNodeRef.current = bassFilter;
+
+      // Connect: Source -> BassFilter -> Destination
+      source.connect(bassFilter);
+      bassFilter.connect(ctx.destination);
+    } catch (e) {
+      console.error("Web Audio API not supported or failed to initialize", e);
+    }
+  };
+
+  // Apply Effects
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = isNightcore ? 1.25 : 1.0;
+      audioRef.current.preservesPitch = !isNightcore; // Disable pitch preservation for true Nightcore chipmunk effect
+    }
+  }, [isNightcore, currentSong]);
+
+  useEffect(() => {
+    if (bassNodeRef.current) {
+      bassNodeRef.current.gain.value = isBassBoost ? 15 : 0; // +15dB Bass Boost
+    }
+  }, [isBassBoost]);
+
+  // Listening Party (Supabase Realtime Broadcast)
+  useEffect(() => {
+    if (isPartyMode) {
+      const channel = supabase.channel('apollo_party', {
+        config: { broadcast: { self: false } }, // don't receive our own messages
+      });
+
+      channel.on('broadcast', { event: 'sync_playback' }, ({ payload }) => {
+        if (!payload) return;
+        
+        // Sync Song
+        if (payload.song && payload.song.id !== currentSong?.id) {
+          setCurrentSong(payload.song);
+          if (audioRef.current) {
+            audioRef.current.src = payload.song.url;
+          }
+        }
+        
+        // Sync Time & Playback State
+        if (audioRef.current) {
+          // Only seek if time difference is > 2 seconds to prevent audio glitching
+          if (Math.abs(audioRef.current.currentTime - payload.currentTime) > 2) {
+            audioRef.current.currentTime = payload.currentTime;
+          }
+          
+          if (payload.isPlaying && audioRef.current.paused) {
+            audioRef.current.play().catch(e => console.error(e));
+            setIsPlaying(true);
+          } else if (!payload.isPlaying && !audioRef.current.paused) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+          }
+        }
+      }).subscribe();
+
+      partyChannelRef.current = channel;
+    } else {
+      if (partyChannelRef.current) {
+        supabase.removeChannel(partyChannelRef.current);
+        partyChannelRef.current = null;
+      }
+    }
+
+    return () => {
+      if (partyChannelRef.current) supabase.removeChannel(partyChannelRef.current);
+    };
+  }, [isPartyMode, currentSong]);
+
+  const broadcastPlaybackState = (isPlayingState: boolean, song: Song | null = currentSong) => {
+    if (isPartyMode && partyChannelRef.current && song && audioRef.current) {
+      partyChannelRef.current.send({
+        type: 'broadcast',
+        event: 'sync_playback',
+        payload: {
+          song: song,
+          currentTime: audioRef.current.currentTime,
+          isPlaying: isPlayingState
+        }
+      });
+    }
+  };
+
+  // Fetch Lyrics
+  useEffect(() => {
+    if (!currentSong) return;
+    const fetchLyricsData = async () => {
+      setIsFetchingLyrics(true);
+      setLyrics(null);
+      try {
+        const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(currentSong.artist)}/${encodeURIComponent(currentSong.title)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setLyrics(data.lyrics || "No lyrics found.");
+        } else {
+          setLyrics("No lyrics found for this track.");
+        }
+      } catch (err) {
+        setLyrics("Failed to fetch lyrics.");
+      } finally {
+        setIsFetchingLyrics(false);
+      }
+    };
+    fetchLyricsData();
+  }, [currentSong]);
 
   // Keyboard Shortcuts (Space, Arrow Keys, Shift+Arrows)
   useEffect(() => {
@@ -611,6 +808,13 @@ export default function Home() {
             </div>
 
             <div className={styles.topActions}>
+              <button 
+                className={isPartyMode ? "btn-neon" : "btn-cyber-outline"} 
+                onClick={() => setIsPartyMode(!isPartyMode)}
+                style={{ background: isPartyMode ? 'var(--neon-pink)' : 'transparent', borderColor: isPartyMode ? 'var(--neon-pink)' : 'var(--border-neon)' }}
+              >
+                <Radio size={16} style={{ color: isPartyMode ? 'white' : 'var(--neon-pink)' }} /> <span className={styles.topActionLabel}>Party Mode</span>
+              </button>
               <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
                 <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> <span className={styles.topActionLabel}>FX Studio</span>
               </button>
@@ -1099,6 +1303,63 @@ export default function Home() {
               ))}
             </div>
 
+            {/* Studio EQ Panel */}
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
+              <button 
+                className={isNightcore ? "btn-neon" : "btn-cyber-outline"} 
+                onClick={() => setIsNightcore(!isNightcore)}
+                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+              >
+                <Zap size={14} /> Nightcore {isNightcore ? 'ON' : 'OFF'}
+              </button>
+              <button 
+                className={isBassBoost ? "btn-neon" : "btn-cyber-outline"} 
+                onClick={() => setIsBassBoost(!isBassBoost)}
+                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+              >
+                <Radio size={14} /> Bass Boost {isBassBoost ? 'ON' : 'OFF'}
+              </button>
+              <button 
+                className={showLyrics ? "btn-neon" : "btn-cyber-outline"} 
+                onClick={() => setShowLyrics(!showLyrics)}
+                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+              >
+                <Sparkles size={14} /> Lyrics
+              </button>
+            </div>
+
+            {/* Lyrics Panel */}
+            {showLyrics && (
+              <div style={{ 
+                width: '100%', 
+                maxWidth: '600px', 
+                height: '250px', 
+                overflowY: 'auto', 
+                background: 'rgba(16, 20, 32, 0.65)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                border: '1px solid var(--border-neon)',
+                textAlign: 'center',
+                boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5)'
+              }}>
+                {isFetchingLyrics ? (
+                  <div style={{ color: 'var(--neon-cyan)', fontStyle: 'italic', marginTop: '4rem' }}>Scanning audio signature for lyrics...</div>
+                ) : (
+                  <pre style={{ 
+                    whiteSpace: 'pre-wrap', 
+                    fontFamily: 'Space Grotesk', 
+                    fontSize: '1.1rem',
+                    lineHeight: '1.8',
+                    color: '#fff',
+                    textShadow: '0 0 10px rgba(139, 92, 246, 0.5)'
+                  }}>
+                    {lyrics}
+                  </pre>
+                )}
+              </div>
+            )}
+
             {currentSong && (
               <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
                 <button 
@@ -1191,7 +1452,8 @@ export default function Home() {
       )}
 
       <audio 
-        ref={audioRef} 
+        ref={audioRef}
+        crossOrigin="anonymous" 
         onTimeUpdate={handleTimeUpdate} 
         onEnded={handleSongEnd}
       />
