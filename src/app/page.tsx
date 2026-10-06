@@ -29,16 +29,6 @@ type Song = {
   user_email?: string | null;
 };
 
-type JuiceTrack = {
-  id: string;
-  name: string;
-  era?: string;
-  state?: string;
-  releaseDate?: string;
-  producer?: string;
-  coverUrl?: string;
-};
-
 type Playlist = {
   id: string;
   name: string;
@@ -60,7 +50,7 @@ const MOCK_LYRICS: LyricLine[] = [
   { time: 25, text: "Easier said than done, I thought you were the one" },
   { time: 30, text: "Listening to my heart instead of my head" },
   { time: 35, text: "You found another one, but I am the better one" },
-  { time: 40, text: "I won't let you forget me... 999 Vault Grails" },
+  { time: 40, text: "I won't let you forget me... Cyber Synth Vault" },
   { time: 50, text: "♪ (Slowed & Reverb Cyber Synth Solo) ♪" }
 ];
 
@@ -70,12 +60,12 @@ export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVisualizerOpen, setIsVisualizerOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-library' | 'juicewrld' | 'favorites'>('my-library');
+  const [activeTab, setActiveTab] = useState<'my-library' | 'favorites'>('my-library');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'track'>('off');
-  const [isMobilePlayerExpanded, setIsMobilePlayerExpanded] = useState(false);
+  const [isMobilePlayerExpanded, setIsMobilePlayerExpanded] = useState(false);(false);
 
   // User Auth & Master Owner Account State
   const [user, setUser] = useState<any | null>({
@@ -127,13 +117,6 @@ export default function Home() {
   const [liveLyrics, setLiveLyrics] = useState<string | null>(null);
   const [isFetchingLyrics, setIsFetchingLyrics] = useState(false);
 
-  // Juice WRLD API state
-  const [juiceTracks, setJuiceTracks] = useState<JuiceTrack[]>([]);
-  const [juiceSearch, setJuiceSearch] = useState("");
-  const [isSearchingJuice, setIsSearchingJuice] = useState(false);
-  const [selectedJuiceTrack, setSelectedJuiceTrack] = useState<JuiceTrack | null>(null);
-  const [importingAlbumTitle, setImportingAlbumTitle] = useState<string | null>(null);
-
   // Audio & Web Audio Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -142,93 +125,6 @@ export default function Home() {
   const eqNodesRef = useRef<BiquadFilterNode[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-
-  // Iconic Juice WRLD Full Discography Presets for 1-Click Batch Import
-  const JUICE_WRLD_ALBUMS = [
-    {
-      title: "Goodbye & Good Riddance",
-      artist: "Juice WRLD",
-      year: 2018,
-      badge: "PLATINUM CLASSIC",
-      coverUrl: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&q=80",
-      tracks: [
-        { title: "Intro", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-        { title: "All Girls Are the Same", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
-        { title: "Lucid Dreams", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-        { title: "Lean Wit Me", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
-        { title: "Wasted (feat. Lil Uzi Vert)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
-        { title: "I'm Still", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
-        { title: "Candles", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
-        { title: "Scared of Love", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
-        { title: "Used To", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
-        { title: "Hurt Me", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
-        { title: "Black & White", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
-        { title: "Long Gone", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
-        { title: "End of the Road", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" },
-        { title: "734", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-14.mp3" }
-      ]
-    },
-    {
-      title: "Legends Never Die",
-      artist: "Juice WRLD",
-      year: 2020,
-      badge: "POSTHUMOUS MASTERPIECE",
-      coverUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80",
-      tracks: [
-        { title: "Anxiety - Intro", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-        { title: "Conversations", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
-        { title: "Titanic", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-        { title: "Bad Energy", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
-        { title: "Right Right", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
-        { title: "Blood On My Jeans", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
-        { title: "Smile (with The Weeknd)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
-        { title: "Life's a Mess (feat. Halsey)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
-        { title: "Come & Go (with Marshmello)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
-        { title: "Wishing Well", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
-        { title: "Screw Juice", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
-        { title: "Up Up and Away", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" },
-        { title: "Man of the Year", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-13.mp3" }
-      ]
-    },
-    {
-      title: "Death Race for Love",
-      artist: "Juice WRLD",
-      year: 2019,
-      badge: "CHART TOPPER",
-      coverUrl: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80",
-      tracks: [
-        { title: "Empty", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-        { title: "Maze", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
-        { title: "Robbery", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-        { title: "Fast", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
-        { title: "Hear Me Calling", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
-        { title: "Flaws and Sins", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
-        { title: "Feeling", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
-        { title: "Syphilis", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" },
-        { title: "Who Shot Cupid?", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3" },
-        { title: "Ring Ring (feat. Clever)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3" },
-        { title: "Desire", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3" },
-        { title: "Make Believe", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3" }
-      ]
-    },
-    {
-      title: "Vault 999 Grails (Unreleased)",
-      artist: "Juice WRLD",
-      year: 2026,
-      badge: "UNRELEASED GRAILS",
-      coverUrl: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&q=80",
-      tracks: [
-        { title: "Rental (Vault Edit)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-        { title: "Off The Rip (Gamble)", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
-        { title: "Cavalier", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-        { title: "Biscotti in the Air", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3" },
-        { title: "KTM Drip", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3" },
-        { title: "Iron On Me", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3" },
-        { title: "Double Date", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3" },
-        { title: "Red Moonlight", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3" }
-      ]
-    }
-  ];
 
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -385,7 +281,6 @@ export default function Home() {
 
   useEffect(() => {
     fetchSongs();
-    fetchJuiceTracks("Lucid Dreams");
   }, []);
 
   // Web Audio API Setup
@@ -707,7 +602,6 @@ export default function Home() {
 
         if (audioFiles.length > 0) {
           setDroppedFiles(audioFiles);
-          setSelectedJuiceTrack(null);
           setIsModalOpen(true);
         } else {
           alert("Please drop valid audio files (.mp3, .wav, .flac, .m4a)");
@@ -752,63 +646,6 @@ export default function Home() {
       }
     } catch (e) {
       console.error("Failed to fetch songs from Supabase", e);
-    }
-  };
-
-  const fetchJuiceTracks = async (query: string = "") => {
-    setIsSearchingJuice(true);
-    try {
-      const url = query.trim()
-        ? `https://juicewrldapi.com/api/songs?search=${encodeURIComponent(query)}`
-        : `https://juicewrldapi.com/api/songs?limit=24`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.songs || data.data || []);
-        setJuiceTracks(list.map((item: any, i: number) => ({
-          id: item.id || item._id || `jw-${i}`,
-          name: item.title || item.name || item.songName || "Untitled Track",
-          era: item.era || item.album || "999 Era",
-          state: item.state || item.status || "Vault Track",
-          releaseDate: item.releaseDate || item.date || "",
-          producer: item.producer || item.producers || "Juice WRLD",
-          coverUrl: item.cover || item.image || item.art || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"
-        })));
-      }
-    } catch (e) {
-      console.error("Failed to fetch from Juice WRLD API", e);
-    } finally {
-      setIsSearchingJuice(false);
-    }
-  };
-
-  const handleBatchImportAlbum = async (albumPreset: typeof JUICE_WRLD_ALBUMS[0]) => {
-    setImportingAlbumTitle(albumPreset.title);
-    try {
-      const payload = albumPreset.tracks.map(t => ({
-        title: t.title,
-        artist: albumPreset.artist,
-        album: albumPreset.title,
-        year: albumPreset.year,
-        url: t.url,
-        cover_url: albumPreset.coverUrl,
-        is_liked: false,
-        plays: 0,
-        user_email: user?.email || 'ilias.mouatacim@gmail.com',
-        user_id: user?.id || null
-      }));
-
-      const { error } = await supabase.from('songs').insert(payload);
-      if (error) throw error;
-
-      await fetchSongs();
-      alert(`⚡ Successfully imported full album "${albumPreset.title}" (${albumPreset.tracks.length} tracks) to your Apollo Library!`);
-      setActiveTab('my-library');
-    } catch (err: any) {
-      console.error("Batch album import error:", err);
-      alert(`Failed to import album: ${err?.message || JSON.stringify(err)}`);
-    } finally {
-      setImportingAlbumTitle(null);
     }
   };
 
@@ -1036,11 +873,6 @@ export default function Home() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const handleJuiceTrackUpload = (track: JuiceTrack) => {
-    setSelectedJuiceTrack(track);
-    setIsModalOpen(true);
-  };
-
   const activeFeaturedSong = currentSong || (songs.length > 0 ? songs[0] : null);
 
   // Dynamic Search, Filter, Playlist & Multi-Sort Calculation
@@ -1125,14 +957,6 @@ export default function Home() {
               >
                 <Disc size={18} /> Feed & Library
                 <span className={styles.dockBadge}>{songs.length}</span>
-              </button>
-
-              <button 
-                className={`${styles.navItem} ${activeTab === 'juicewrld' ? styles.navItemActive : ''}`}
-                onClick={() => { setActiveTab('juicewrld'); setActivePlaylistId(null); }}
-              >
-                <Flame size={18} style={{ color: 'var(--neon-pink)' }} /> Juice Vault
-                <span className={styles.dockBadge} style={{ background: 'rgba(255,0,127,0.15)', color: 'var(--neon-pink)', borderColor: 'rgba(255,0,127,0.3)' }}>999</span>
               </button>
 
               <button 
@@ -1229,7 +1053,7 @@ export default function Home() {
             <button 
               className="btn-neon" 
               style={{ width: '100%', marginTop: '0.25rem', fontSize: '0.8rem', padding: '0.6rem 1rem' }} 
-              onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}
+              onClick={() => setIsModalOpen(true)}
             >
               <Upload size={16} /> Upload Track
             </button>
@@ -1243,13 +1067,13 @@ export default function Home() {
             {/* Mobile Header Branding */}
             <div className={styles.mobileBrandHeader}>
               <div className="gradient-text-flashy" style={{ fontFamily: 'Syne', fontSize: '1.3rem', fontWeight: 800 }}>
-                APOLLO 999
+                APOLLO
               </div>
               <div className={styles.mobileBrandActions}>
                 <button className="btn-cyber-outline" style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }} onClick={() => setIsVisualizerOpen(true)}>
                   <Sparkles size={14} style={{ color: 'var(--neon-pink)' }} /> Studio
                 </button>
-                <button className="btn-neon" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
+                <button className="btn-neon" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} onClick={() => setIsModalOpen(true)}>
                   <Plus size={14} /> Add
                 </button>
               </div>
@@ -1259,26 +1083,10 @@ export default function Home() {
               <Search size={18} style={{ color: 'var(--neon-cyan)' }} />
               <input 
                 type="text" 
-                placeholder={activeTab === 'juicewrld' ? "Search Juice WRLD Vault API..." : "Live search songs, artists, or albums..."} 
-                value={activeTab === 'juicewrld' ? juiceSearch : searchQuery}
-                onChange={(e) => {
-                  if (activeTab === 'juicewrld') {
-                    setJuiceSearch(e.target.value);
-                  } else {
-                    setSearchQuery(e.target.value);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && activeTab === 'juicewrld') {
-                    fetchJuiceTracks(juiceSearch);
-                  }
-                }}
+                placeholder="Live search songs, artists, or albums..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
-              {activeTab === 'juicewrld' && (
-                <button className="btn-cyber-outline" style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem' }} onClick={() => fetchJuiceTracks(juiceSearch)}>
-                  Search Vault
-                </button>
-              )}
             </div>
 
             <div className={styles.topActions}>
@@ -1304,7 +1112,7 @@ export default function Home() {
               <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
                 <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> FX Studio
               </button>
-              <button className="btn-neon" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
+              <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
                 <Plus size={16} /> Add Track
               </button>
             </div>
@@ -1341,7 +1149,7 @@ export default function Home() {
             {/* Right Card: Featured Banner Deck */}
             <div className={styles.heroCardRight}>
               <div className={styles.watermarkText}>
-                {activeFeaturedSong ? activeFeaturedSong.title : "APOLLO 999"}
+                {activeFeaturedSong ? activeFeaturedSong.title : "APOLLO AUDIO"}
               </div>
 
               <div style={{ position: 'relative', zIndex: 2 }}>
@@ -1352,7 +1160,7 @@ export default function Home() {
                   {activeFeaturedSong ? activeFeaturedSong.title : "Between Death and Dreams"}
                 </h1>
                 <p className={styles.heroSub}>
-                  {activeFeaturedSong ? `${activeFeaturedSong.artist} • ${activeFeaturedSong.album || 'Juice WRLD Era'}` : "Brand of Sacrifice • April 2026"}
+                  {activeFeaturedSong ? `${activeFeaturedSong.artist} • ${activeFeaturedSong.album || 'Single Release'}` : "Brand of Sacrifice • April 2026"}
                 </p>
               </div>
 
@@ -1429,276 +1237,176 @@ export default function Home() {
             <div className={styles.filterBar}>
               <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
                 {activeTab === 'my-library' && <Disc style={{ color: 'var(--neon-cyan)' }} />}
-                {activeTab === 'juicewrld' && <Flame style={{ color: 'var(--neon-pink)' }} />}
                 {activeTab === 'favorites' && <Heart style={{ color: 'var(--neon-pink)' }} />}
-                {activePlaylistId ? playlists.find(p => p.id === activePlaylistId)?.name : activeTab === 'my-library' ? "Your Music Collection" : activeTab === 'juicewrld' ? "Juice WRLD Vault 999" : "Your Favorites"}
+                {activePlaylistId ? playlists.find(p => p.id === activePlaylistId)?.name : activeTab === 'my-library' ? "Your Music Collection" : "Your Favorites"}
               </h2>
 
-              {activeTab !== 'juicewrld' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div className={styles.filterChips}>
-                    <button 
-                      className={`${styles.filterChip} ${vibeFilter === 'all' ? styles.filterChipActive : ''}`}
-                      onClick={() => setVibeFilter('all')}
-                    >
-                      All Tracks
-                    </button>
-                    <button 
-                      className={`${styles.filterChip} ${vibeFilter === 'unreleased' ? styles.filterChipActive : ''}`}
-                      onClick={() => setVibeFilter(vibeFilter === 'unreleased' ? 'all' : 'unreleased')}
-                    >
-                      🔥 Unreleased
-                    </button>
-                  </div>
-
-                  <select 
-                    className={styles.sortSelect} 
-                    value={sortBy} 
-                    onChange={(e) => setSortBy(e.target.value as any)}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div className={styles.filterChips}>
+                  <button 
+                    className={`${styles.filterChip} ${vibeFilter === 'all' ? styles.filterChipActive : ''}`}
+                    onClick={() => setVibeFilter('all')}
                   >
-                    <option value="newest">Sort: Newest First</option>
-                    <option value="oldest">Sort: Oldest First</option>
-                    <option value="title">Sort: Title (A-Z)</option>
-                    <option value="artist">Sort: Artist Name</option>
-                    <option value="plays">Sort: Most Played</option>
-                  </select>
-
-                  <div className={styles.viewToggler}>
-                    <button 
-                      className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
-                      onClick={() => setViewMode('list')}
-                      title="List View"
-                    >
-                      <List size={16} />
-                    </button>
-                    <button 
-                      className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.viewBtnActive : ''}`}
-                      onClick={() => setViewMode('grid')}
-                      title="Grid View"
-                    >
-                      <Grid size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {activeTab === 'my-library' || activeTab === 'favorites' ? (
-              displayedSongs.length === 0 ? (
-                <div className="cyber-panel" style={{ padding: '3rem', textAlign: 'center', margin: '2rem 0' }}>
-                  <Music size={48} style={{ color: 'var(--neon-pink)', margin: '0 auto 1rem' }} />
-                  <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-                    {activeTab === 'favorites' ? "No Favorites Saved Yet" : searchQuery ? "No Songs Found Matching Search" : "No Songs in Your Private Vault"}
-                  </h3>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                    {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Upload audio files or import Juice WRLD albums into your personal account library."}
-                  </p>
-                  <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
-                    <Upload size={16} /> Upload Audio File
+                    All Tracks
+                  </button>
+                  <button 
+                    className={`${styles.filterChip} ${vibeFilter === 'unreleased' ? styles.filterChipActive : ''}`}
+                    onClick={() => setVibeFilter(vibeFilter === 'unreleased' ? 'all' : 'unreleased')}
+                  >
+                    🔥 Unreleased
                   </button>
                 </div>
-              ) : viewMode === 'list' ? (
-                /* DETAILED TABLE LIST VIEW */
-                <div className={styles.trackTable}>
-                  {displayedSongs.map((song, index) => {
-                    const isPlayingThis = currentSong?.id === song.id && isPlaying;
-                    const isLiked = likedSongIds.includes(song.id);
-                    return (
-                      <div 
-                        key={song.id} 
-                        className={`${styles.tableRow} ${currentSong?.id === song.id ? styles.tableRowActive : ''}`}
-                        onClick={() => playSong(song)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, width: '20px' }}>{index + 1}</span>
-                          <img 
-                            src={song.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
-                            alt={song.title} 
-                            className={styles.tableThumb} 
-                          />
-                        </div>
 
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{song.title}</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{song.artist}</div>
-                        </div>
+                <select 
+                  className={styles.sortSelect} 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                >
+                  <option value="newest">Sort: Newest First</option>
+                  <option value="oldest">Sort: Oldest First</option>
+                  <option value="title">Sort: Title (A-Z)</option>
+                  <option value="artist">Sort: Artist Name</option>
+                  <option value="plays">Sort: Most Played</option>
+                </select>
 
-                        <div className={styles.mobileHide} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                          {song.album || 'Single Release'}
-                        </div>
-
-                        <div className={styles.mobileHide} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          {song.year || '2026'}
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                          <button 
-                            className="btn-cyber-outline" 
-                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.75rem' }}
-                            onClick={(e) => addToQueue(song, e)}
-                            title="Add to Audio Queue"
-                          >
-                            <Plus size={14} /> Queue
-                          </button>
-                          <button 
-                            className="btn-cyber-outline" 
-                            style={{ padding: '0.4rem', border: 'none', background: 'transparent' }}
-                            onClick={(e) => toggleLike(song.id, e)}
-                          >
-                            <Heart size={18} color={isLiked ? 'var(--neon-pink)' : 'var(--text-muted)'} fill={isLiked ? 'var(--neon-pink)' : 'none'} />
-                          </button>
-                          <button className="btn-neon" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                            {isPlayingThis ? <Pause size={14} /> : <Play size={14} fill="white" />}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className={styles.viewToggler}>
+                  <button 
+                    className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+                    onClick={() => setViewMode('list')}
+                    title="List View"
+                  >
+                    <List size={16} />
+                  </button>
+                  <button 
+                    className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.viewBtnActive : ''}`}
+                    onClick={() => setViewMode('grid')}
+                    title="Grid View"
+                  >
+                    <Grid size={16} />
+                  </button>
                 </div>
-              ) : (
-                /* 3D CYBER CARD GRID VIEW */
-                <div className={styles.trackGrid}>
-                  {displayedSongs.map((song) => {
-                    const isPlayingThis = currentSong?.id === song.id && isPlaying;
-                    return (
-                      <div 
-                        key={song.id} 
-                        className={`${styles.cyberCard} ${currentSong?.id === song.id ? styles.cyberCardActive : ''}`}
-                        onClick={() => playSong(song)}
-                      >
-                        <div className={styles.cardCoverBox}>
-                          {song.cover_url ? (
-                            <img src={song.cover_url} alt={song.title} className={styles.cardImage} />
-                          ) : (
-                            <Music size={48} style={{ color: 'var(--text-muted)' }} />
-                          )}
-                          <div className={styles.cardPlayBtnOverlay}>
-                            <div className={styles.playCircleBtn}>
-                              {isPlayingThis ? <Pause size={24} /> : <Play size={24} fill="white" style={{ marginLeft: '3px' }} />}
-                            </div>
-                          </div>
-                        </div>
+              </div>
+            </div>
 
-                        <div className={styles.cardInfo}>
-                          <div className={styles.cardTitle}>{song.title}</div>
-                          <div className={styles.cardSub}>{song.artist}</div>
-                        </div>
+            {displayedSongs.length === 0 ? (
+              <div className="cyber-panel" style={{ padding: '3rem', textAlign: 'center', margin: '2rem 0' }}>
+                <Music size={48} style={{ color: 'var(--neon-pink)', margin: '0 auto 1rem' }} />
+                <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
+                  {activeTab === 'favorites' ? "No Favorites Saved Yet" : searchQuery ? "No Songs Found Matching Search" : "No Songs in Your Private Vault"}
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                  {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Upload audio files to add them to your personal account library."}
+                </p>
+                <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
+                  <Upload size={16} /> Upload Audio File
+                </button>
+              </div>
+            ) : viewMode === 'list' ? (
+              /* DETAILED TABLE LIST VIEW */
+              <div className={styles.trackTable}>
+                {displayedSongs.map((song, index) => {
+                  const isPlayingThis = currentSong?.id === song.id && isPlaying;
+                  const isLiked = likedSongIds.includes(song.id);
+                  return (
+                    <div 
+                      key={song.id} 
+                      className={`${styles.tableRow} ${currentSong?.id === song.id ? styles.tableRowActive : ''}`}
+                      onClick={() => playSong(song)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, width: '20px' }}>{index + 1}</span>
+                        <img 
+                          src={song.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
+                          alt={song.title} 
+                          className={styles.tableThumb} 
+                        />
+                      </div>
 
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{song.title}</div>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{song.artist}</div>
+                      </div>
+
+                      <div className={styles.mobileHide} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {song.album || 'Single Release'}
+                      </div>
+
+                      <div className={styles.mobileHide} style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {song.year || '2026'}
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
                         <button 
                           className="btn-cyber-outline" 
-                          style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', padding: '0.35rem' }}
+                          style={{ padding: '0.35rem 0.6rem', fontSize: '0.75rem' }}
                           onClick={(e) => addToQueue(song, e)}
+                          title="Add to Audio Queue"
                         >
-                          <Plus size={14} /> Add to Queue
+                          <Plus size={14} /> Queue
                         </button>
-
-                        {isPlayingThis && (
-                          <div className={styles.eqContainer} style={{ marginTop: '0.5rem' }}>
-                            <div className={styles.eqBar}></div>
-                            <div className={styles.eqBar}></div>
-                            <div className={styles.eqBar}></div>
-                            <div className={styles.eqBar}></div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-                {/* 1-CLICK FULL ALBUM IMPORTER PRESETS */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-                    <div>
-                      <h3 className="gradient-text-flashy" style={{ fontSize: '1.4rem', fontWeight: 800 }}>
-                        💿 Iconic Juice WRLD Albums (1-Click Importer)
-                      </h3>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        Import full studio albums directly into your personal account library in 1 click.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className={styles.trackGrid}>
-                    {JUICE_WRLD_ALBUMS.map((album) => (
-                      <div key={album.title} className={styles.cyberCard} style={{ background: 'rgba(25, 18, 38, 0.7)' }}>
-                        <div className={styles.cardCoverBox}>
-                          <img src={album.coverUrl} alt={album.title} className={styles.cardImage} />
-                          <span className={styles.cardBadge} style={{ color: 'var(--neon-pink)', borderColor: 'rgba(255,0,127,0.4)' }}>
-                            {album.badge}
-                          </span>
-                        </div>
-                        
-                        <div className={styles.cardInfo}>
-                          <div className={styles.cardTitle}>{album.title}</div>
-                          <div className={styles.cardSub}>{album.artist} • {album.year} • {album.tracks.length} Tracks</div>
-                        </div>
-
                         <button 
-                          className="btn-neon" 
-                          style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.78rem', padding: '0.55rem' }}
-                          disabled={importingAlbumTitle === album.title}
-                          onClick={() => handleBatchImportAlbum(album)}
+                          className="btn-cyber-outline" 
+                          style={{ padding: '0.4rem', border: 'none', background: 'transparent' }}
+                          onClick={(e) => toggleLike(song.id, e)}
                         >
-                          <Zap size={14} /> {importingAlbumTitle === album.title ? "Importing Album..." : `Import Full Album (${album.tracks.length} Tracks)`}
+                          <Heart size={18} color={isLiked ? 'var(--neon-pink)' : 'var(--text-muted)'} fill={isLiked ? 'var(--neon-pink)' : 'none'} />
+                        </button>
+                        <button className="btn-neon" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
+                          {isPlayingThis ? <Pause size={14} /> : <Play size={14} fill="white" />}
                         </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* INDIVIDUAL JUICE TRACKS VAULT SEARCH */}
-                <div>
-                  <div style={{ marginBottom: '1.25rem' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
-                      🔥 Vault 999 Track Explorer
-                    </h3>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                      Search and import individual unreleased grails & studio tracks.
-                    </p>
-                  </div>
-
-                  {isSearchingJuice ? (
-                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--neon-cyan)' }}>
-                      <div className="animate-spin-slow" style={{ display: 'inline-block', marginBottom: '1rem' }}>
-                        <Radio size={40} />
-                      </div>
-                      <p style={{ fontWeight: 600 }}>Fetching tracks from Juice WRLD Vault...</p>
                     </div>
-                  ) : (
-                    <div className={styles.trackGrid}>
-                      {juiceTracks.map((track) => (
-                        <div key={track.id} className={styles.cyberCard}>
-                          <div className={styles.cardCoverBox}>
-                            <img 
-                              src={track.coverUrl || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
-                              alt={track.name} 
-                              className={styles.cardImage} 
-                            />
-                            <span className={styles.cardBadge}>{track.state || 'VAULT'}</span>
+                  );
+                })}
+              </div>
+            ) : (
+              /* 3D CYBER CARD GRID VIEW */
+              <div className={styles.trackGrid}>
+                {displayedSongs.map((song) => {
+                  const isPlayingThis = currentSong?.id === song.id && isPlaying;
+                  return (
+                    <div 
+                      key={song.id} 
+                      className={`${styles.cyberCard} ${currentSong?.id === song.id ? styles.cyberCardActive : ''}`}
+                      onClick={() => playSong(song)}
+                    >
+                      <div className={styles.cardCoverBox}>
+                        {song.cover_url ? (
+                          <img src={song.cover_url} alt={song.title} className={styles.cardImage} />
+                        ) : (
+                          <Music size={48} style={{ color: 'var(--text-muted)' }} />
+                        )}
+                        <div className={styles.cardPlayBtnOverlay}>
+                          <div className={styles.playCircleBtn}>
+                            {isPlayingThis ? <Pause size={24} /> : <Play size={24} fill="white" style={{ marginLeft: '3px' }} />}
                           </div>
-                          
-                          <div className={styles.cardInfo}>
-                            <div className={styles.cardTitle}>{track.name}</div>
-                            <div className={styles.cardSub}>Juice WRLD • {track.era}</div>
-                          </div>
-
-                          <button 
-                            className="btn-cyber-outline" 
-                            style={{ width: '100%', marginTop: '0.75rem', fontSize: '0.78rem', padding: '0.45rem' }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleJuiceTrackUpload(track);
-                            }}
-                          >
-                            <Upload size={14} /> Import Track
-                          </button>
                         </div>
-                      ))}
+                      </div>
+
+                      <div className={styles.cardInfo}>
+                        <div className={styles.cardTitle}>{song.title}</div>
+                        <div className={styles.cardSub}>{song.artist}</div>
+                      </div>
+
+                      <button 
+                        className="btn-cyber-outline" 
+                        style={{ width: '100%', marginTop: '0.5rem', fontSize: '0.75rem', padding: '0.35rem' }}
+                        onClick={(e) => addToQueue(song, e)}
+                      >
+                        <Plus size={14} /> Add to Queue
+                      </button>
+
+                      {isPlayingThis && (
+                        <div className={styles.eqContainer} style={{ marginTop: '0.5rem' }}>
+                          <div className={styles.eqBar}></div>
+                          <div className={styles.eqBar}></div>
+                          <div className={styles.eqBar}></div>
+                          <div className={styles.eqBar}></div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -1966,7 +1674,7 @@ export default function Home() {
                   <button 
                     className="btn-cyber-outline" 
                     style={{ flex: 1, fontSize: '0.8rem', padding: '0.55rem' }} 
-                    onClick={() => { setIsMobilePlayerExpanded(false); setSelectedJuiceTrack(null); setIsModalOpen(true); }}
+                    onClick={() => { setIsMobilePlayerExpanded(false); setIsModalOpen(true); }}
                   >
                     <Upload size={16} style={{ color: 'var(--neon-amber)' }} /> Upload
                   </button>
@@ -2462,14 +2170,6 @@ export default function Home() {
         </button>
 
         <button 
-          className={`${styles.mobileNavItem} ${activeTab === 'juicewrld' ? styles.mobileNavItemActive : ''}`}
-          onClick={() => setActiveTab('juicewrld')}
-        >
-          <Flame size={20} style={{ color: activeTab === 'juicewrld' ? 'var(--neon-pink)' : 'inherit' }} />
-          <span>Juice 999</span>
-        </button>
-
-        <button 
           className={`${styles.mobileNavItem} ${activeTab === 'favorites' ? styles.mobileNavItemActive : ''}`}
           onClick={() => setActiveTab('favorites')}
         >
@@ -2487,7 +2187,7 @@ export default function Home() {
 
         <button 
           className={styles.mobileNavItem}
-          onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}
+          onClick={() => setIsModalOpen(true)}
         >
           <Upload size={20} style={{ color: 'var(--neon-amber)' }} />
           <span>Upload</span>
@@ -2497,17 +2197,14 @@ export default function Home() {
       {/* Upload Modal */}
       {isModalOpen && (
         <UploadModal 
-          selectedTrack={selectedJuiceTrack}
           initialFiles={droppedFiles}
           user={user}
           onClose={() => {
             setIsModalOpen(false);
-            setSelectedJuiceTrack(null);
             setDroppedFiles([]);
           }} 
           onSuccess={() => {
             setIsModalOpen(false);
-            setSelectedJuiceTrack(null);
             setDroppedFiles([]);
             fetchSongs();
           }} 
@@ -2535,13 +2232,11 @@ type ParsedTrackItem = {
 };
 
 function UploadModal({ 
-  selectedTrack, 
   initialFiles = [],
   user,
   onClose, 
   onSuccess 
 }: { 
-  selectedTrack?: JuiceTrack | null, 
   initialFiles?: File[],
   user?: any,
   onClose: () => void, 
@@ -2574,9 +2269,9 @@ function UploadModal({
         return {
           file,
           title: meta.title || file.name.replace(/\.[^/.]+$/, ""),
-          artist: meta.artist || (selectedTrack ? "Juice WRLD" : ""),
-          album: meta.album || selectedTrack?.era || "",
-          year: meta.year || (selectedTrack?.releaseDate ? new Date(selectedTrack.releaseDate).getFullYear() || null : null),
+          artist: meta.artist || "Unknown Artist",
+          album: meta.album || "",
+          year: meta.year || null,
           coverBlob: meta.coverBlob,
           coverPreviewUrl: meta.coverPreviewUrl
         };
@@ -2590,7 +2285,7 @@ function UploadModal({
     } else {
       setParsedTracks([]);
     }
-  }, [files, selectedTrack]);
+  }, [files]);
 
   function sanitizeStorageKey(name: string): string {
     return name
@@ -2614,7 +2309,7 @@ function UploadModal({
     setUploadProgress({ completed: 0, total: parsedTracks.length, currentName: "Initializing batch engine..." });
 
     try {
-      let globalCoverUrl = selectedTrack?.coverUrl || null;
+      let globalCoverUrl = null;
       if (cover) {
         const cleanCoverName = sanitizeStorageKey(cover.name);
         const coverPath = `covers/${Date.now()}-global-${cleanCoverName}`;
@@ -2665,7 +2360,7 @@ function UploadModal({
           }
 
           const finalTitle = item.title || (files.length === 1 && globalTitle ? globalTitle : item.file.name.replace(/\.[^/.]+$/, ""));
-          const finalArtist = item.artist || globalArtist || "Juice WRLD";
+          const finalArtist = item.artist || globalArtist || "Unknown Artist";
           const finalAlbum = item.album || globalAlbum || null;
           const finalYear = item.year || (globalYear ? parseInt(globalYear, 10) : null);
 
@@ -2747,7 +2442,7 @@ function UploadModal({
       <div className={styles.modalWindow}>
         <div className={styles.modalHead}>
           <h3 className="gradient-text-flashy">
-            {selectedTrack ? `Import "${selectedTrack.name}"` : files.length > 1 ? `Batch Upload Album (${files.length} Files)` : "Upload Music Track"}
+            {files.length > 1 ? `Batch Upload Album (${files.length} Files)` : "Upload Music Track"}
           </h3>
           <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={onClose}>
             <X size={18} />
@@ -2819,7 +2514,7 @@ function UploadModal({
                       {item.title}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {item.artist || 'Juice WRLD'} {item.album ? `• ${item.album}` : ''}
+                      {item.artist || 'Unknown Artist'} {item.album ? `• ${item.album}` : ''}
                     </div>
                   </div>
                   {item.coverBlob && (
@@ -2839,7 +2534,7 @@ function UploadModal({
             <div className={styles.dropzoneCyber} style={{ padding: '1rem' }} onClick={() => document.getElementById('coverFileInput')?.click()}>
               <ImageIcon size={22} style={{ color: 'var(--neon-pink)', margin: '0 auto 0.4rem' }} />
               <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                {cover ? cover.name : selectedTrack?.coverUrl ? "Using Juice WRLD Vault Cover Art" : "Click to select album cover artwork"}
+                {cover ? cover.name : "Click to select album cover artwork"}
               </div>
               <input 
                 id="coverFileInput"
@@ -2859,7 +2554,7 @@ function UploadModal({
                 className="input-cyber" 
                 placeholder="Song Title" 
                 required={files.length === 1}
-                defaultValue={selectedTrack?.name || files[0]?.name.replace(/\.[^/.]+$/, "") || ""} 
+                defaultValue={files[0]?.name.replace(/\.[^/.]+$/, "") || ""} 
               />
             </div>
           )}
@@ -2869,9 +2564,8 @@ function UploadModal({
             <input 
               name="artist" 
               className="input-cyber" 
-              placeholder="Artist Name (e.g. Juice WRLD)" 
+              placeholder="Artist Name" 
               required 
-              defaultValue={selectedTrack ? "Juice WRLD" : "Juice WRLD"} 
             />
           </div>
 
@@ -2882,7 +2576,6 @@ function UploadModal({
                 name="album" 
                 className="input-cyber" 
                 placeholder="Album Name" 
-                defaultValue={selectedTrack?.era || ""} 
               />
             </div>
             <div style={{ flex: 1 }}>
@@ -2892,7 +2585,6 @@ function UploadModal({
                 type="number" 
                 className="input-cyber" 
                 placeholder="2026" 
-                defaultValue={selectedTrack?.releaseDate ? new Date(selectedTrack.releaseDate).getFullYear() || "" : ""} 
               />
             </div>
           </div>
