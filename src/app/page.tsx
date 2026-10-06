@@ -1093,27 +1093,45 @@ export default function Home() {
               <button 
                 className={isPartyMode ? "btn-neon" : "btn-cyber-outline"} 
                 onClick={() => setIsPartyMode(!isPartyMode)}
-                style={{ background: isPartyMode ? 'var(--neon-pink)' : 'transparent', borderColor: isPartyMode ? 'var(--neon-pink)' : 'var(--border-neon)' }}
+                style={{ 
+                  fontSize: '0.8rem', 
+                  padding: '0.45rem 0.85rem',
+                  background: isPartyMode ? 'linear-gradient(135deg, var(--neon-pink), var(--neon-violet))' : 'transparent' 
+                }}
               >
-                <Radio size={16} style={{ color: isPartyMode ? 'white' : 'var(--neon-pink)' }} /> <span>Party Sync</span>
+                <Radio size={15} style={{ color: isPartyMode ? '#fff' : 'var(--neon-pink)' }} /> <span>Party Sync</span>
               </button>
               
               <button 
                 className="btn-cyber-outline" 
                 onClick={() => setIsAuthModalOpen(true)}
-                style={{ color: user ? 'var(--neon-cyan)' : 'inherit' }}
+                style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', color: user ? 'var(--neon-cyan)' : 'inherit' }}
               >
-                <UserIcon size={16} /> <span>{user ? (user.user_metadata?.username || user.email?.split('@')[0]) : "Sign In"}</span>
+                <UserIcon size={15} /> <span>{user ? (user.user_metadata?.username || user.email?.split('@')[0]) : "Sign In"}</span>
               </button>
 
-              <button className="btn-cyber-outline" onClick={() => setIsQueueOpen(true)}>
-                <ListMusic size={16} style={{ color: 'var(--neon-amber)' }} /> Queue ({queue.length})
+              <button 
+                className="btn-cyber-outline" 
+                onClick={() => setIsQueueOpen(true)}
+                style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+              >
+                <ListMusic size={15} style={{ color: 'var(--neon-amber)' }} /> Queue ({queue.length})
               </button>
-              <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
-                <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> FX Studio
+
+              <button 
+                className="btn-cyber-outline" 
+                onClick={() => setIsVisualizerOpen(true)}
+                style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem' }}
+              >
+                <Sparkles size={15} style={{ color: 'var(--neon-pink)' }} /> Studio
               </button>
-              <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
-                <Plus size={16} /> Add Track
+
+              <button 
+                className="btn-neon" 
+                onClick={() => setIsModalOpen(true)}
+                style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
+              >
+                <Plus size={15} /> Add Track
               </button>
             </div>
           </header>
@@ -1313,8 +1331,8 @@ export default function Home() {
                       className={`${styles.tableRow} ${currentSong?.id === song.id ? styles.tableRowActive : ''}`}
                       onClick={() => playSong(song)}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, width: '20px' }}>{index + 1}</span>
+                      <div className={styles.tableIndexCol}>
+                        <span className={styles.tableIndexNum}>{index + 1}</span>
                         <img 
                           src={song.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
                           alt={song.title} 
@@ -1322,12 +1340,12 @@ export default function Home() {
                         />
                       </div>
 
-                      <div>
-                        <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{song.title}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{song.artist}</div>
+                      <div className={styles.tableMetaCol}>
+                        <div className={styles.tableTitleText}>{song.title}</div>
+                        <div className={styles.tableArtistText}>{song.artist}</div>
                       </div>
 
-                      <div className={styles.mobileHide} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <div className={styles.mobileHide} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {song.album || 'Single Release'}
                       </div>
 
@@ -1335,10 +1353,10 @@ export default function Home() {
                         {song.year || '2026'}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <div className={styles.tableActionsCol}>
                         <button 
                           className="btn-cyber-outline" 
-                          style={{ padding: '0.35rem 0.6rem', fontSize: '0.75rem' }}
+                          style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
                           onClick={(e) => addToQueue(song, e)}
                           title="Add to Audio Queue"
                         >
@@ -1351,8 +1369,8 @@ export default function Home() {
                         >
                           <Heart size={18} color={isLiked ? 'var(--neon-pink)' : 'var(--text-muted)'} fill={isLiked ? 'var(--neon-pink)' : 'none'} />
                         </button>
-                        <button className="btn-neon" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                          {isPlayingThis ? <Pause size={14} /> : <Play size={14} fill="white" />}
+                        <button className={styles.tablePlayBtn} title={isPlayingThis ? "Pause" : "Play"}>
+                          {isPlayingThis ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" style={{ marginLeft: '1px' }} />}
                         </button>
                       </div>
                     </div>
