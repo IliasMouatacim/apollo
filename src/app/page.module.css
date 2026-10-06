@@ -191,6 +191,10 @@
   gap: 1rem;
 }
 
+.topActionLabel {
+  display: inline;
+}
+
 /* ========= MELO-INSPIRED HERO SPLIT STAGE ========= */
 .heroRowSplit {
   margin: 1.5rem 2.5rem 1rem 2.5rem;
@@ -980,7 +984,38 @@
   text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
 }
 
+/* ========= HERO TYPOGRAPHY (used in TSX) ========= */
+.heroTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--neon-amber);
+  margin-bottom: 0.75rem;
+}
+
+.heroTitle {
+  font-family: 'Syne', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.15;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.03em;
+}
+
+.heroSub {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
 /* ========= RESPONSIVE DESIGN ========= */
+
+/* --- Tablet Breakpoint --- */
 @media (max-width: 1024px) {
   .cyberDock { width: 200px; padding: 1.25rem 0.85rem; }
   .heroRowSplit { grid-template-columns: 1fr; margin: 1rem 1.5rem; }
@@ -988,26 +1023,228 @@
   .topBar { padding: 1rem 1.5rem; }
 }
 
+/* --- Mobile Breakpoint --- */
 @media (max-width: 768px) {
+  /* Hide desktop sidebar, show mobile bottom dock */
   .cyberDock { display: none; }
   .mobileCyberDock { display: flex; }
+
+  /* Content area needs enough bottom padding for player + mobile dock */
   .contentArea {
-    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
   }
+
+  /* Bottom player sits above the mobile dock */
   .cyberPlayer {
     bottom: calc(60px + env(safe-area-inset-bottom, 0px));
-    padding: 0 0.85rem;
-    height: 75px;
-    background: rgba(9, 11, 18, 0.94);
+    padding: 0 0.75rem;
+    height: 72px;
+    background: rgba(9, 11, 18, 0.96);
   }
+
+  /* Hide volume / maximize on mobile — not needed */
   .playerRightExtras { display: none; }
-  .playerTrackMeta { max-width: 140px; }
-  .topBar { padding: 0.85rem 1rem; }
-  .searchBox { max-width: 100%; }
-  .heroRowSplit { grid-template-columns: 1fr; margin: 1rem; }
-  .statsRow { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
-  .statBox { padding: 0.6rem 0.5rem; text-align: center; }
-  .statVal { font-size: 1.2rem; }
+
+  /* Constrain track meta so controls don't overflow */
+  .playerTrackMeta {
+    max-width: 120px;
+    gap: 0.6rem;
+    width: auto;
+  }
+  .playerArtWrap {
+    width: 48px;
+    height: 48px;
+  }
+  .playerTitleText { font-size: 0.82rem; }
+  .playerArtistText { font-size: 0.7rem; }
+
+  /* Center controls: tighter gap */
+  .playerCenterControls { gap: 0.3rem; }
+  .controlButtons { gap: 0.5rem; }
+  .btnPlayMain { width: 40px; height: 40px; }
+  .progressContainer { gap: 0.4rem; font-size: 0.68rem; }
+
+  /* Top bar */
+  .topBar {
+    padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .searchBox {
+    max-width: 100%;
+    flex: 1 1 100%;
+    order: 2;
+    padding: 0.5rem 1rem;
+  }
+  .topActions {
+    order: 1;
+    margin-left: auto;
+    gap: 0.5rem;
+  }
+  .topActionLabel { display: none; }
+
+  /* Hero section */
+  .heroRowSplit {
+    grid-template-columns: 1fr;
+    margin: 0.75rem;
+    gap: 0.75rem;
+  }
+  .heroCardLeft {
+    padding: 1.25rem;
+  }
+  .heroCardRight {
+    padding: 1.25rem;
+    min-height: 180px;
+  }
+  .heroTitle { font-size: 1.35rem; }
+  .heroSub { font-size: 0.82rem; }
+  .watermarkText { font-size: 2rem; }
+
+  /* Stats row & promo */
+  .statsRow {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+  }
+  .statBox {
+    padding: 0.5rem 0.4rem;
+    text-align: center;
+  }
+  .statVal { font-size: 1.1rem; }
+  .statLbl { font-size: 0.6rem; }
+  .promoBanner {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 1rem;
+  }
+
+  /* Grid section spacing */
+  .gridSection { padding: 0.75rem 1rem; }
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .sectionTitle { font-size: 1.15rem; }
+
+  /* Track table list: collapse to 2-column layout on mobile */
+  .tableRow {
+    grid-template-columns: 48px 1fr auto;
+    padding: 0.6rem 0.75rem;
+    gap: 0.5rem;
+  }
+  /* Hide album and year columns on mobile */
+  .tableRow > div:nth-child(3),
+  .tableRow > div:nth-child(4) {
+    display: none;
+  }
+  .tableThumb {
+    width: 38px;
+    height: 38px;
+  }
+
+  /* Track grid: smaller cards on mobile */
+  .trackGrid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+  .cyberCard { padding: 0.75rem; }
+  .cardTitle { font-size: 0.88rem; }
+  .cardSub { font-size: 0.72rem; }
+  .cardBadge { font-size: 0.58rem; padding: 0.15rem 0.4rem; }
+
+  /* Visualizer overlay */
+  .visualizerOverlay { padding: 1.25rem; }
+  .visualizerHeader {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+    margin-bottom: 1.25rem;
+  }
+  .giantSpinningVinyl { width: 200px; height: 200px; }
+  .giantCenterArt { width: 80px; height: 80px; }
+  .fullSpectrumBars { height: 60px; gap: 4px; }
+  .fullSpectrumBar { width: 5px; }
+  .visualizerBody { gap: 1.5rem; }
+
+  /* Modal */
+  .modalWindow {
+    padding: 1.25rem;
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+  }
+  .modalHead h3 { font-size: 1.05rem; }
+  .dropzoneCyber { padding: 1.25rem; }
+}
+
+/* --- Small Phone Breakpoint (≤ 480px) --- */
+@media (max-width: 480px) {
+  /* Even tighter top bar */
+  .topBar { padding: 0.6rem 0.75rem; }
+  .searchBox { padding: 0.45rem 0.85rem; font-size: 0.82rem; }
+  .searchBox input { font-size: 0.82rem; }
+
+  /* Hero section compact */
+  .heroRowSplit { margin: 0.5rem; gap: 0.5rem; }
+  .heroCardLeft { padding: 1rem; }
+  .heroCardRight { padding: 1rem; min-height: 150px; }
+  .heroTitle { font-size: 1.15rem; }
+  .heroSub { font-size: 0.75rem; }
+  .watermarkText { font-size: 1.5rem; }
+
+  /* Stats even smaller */
+  .statVal { font-size: 0.95rem; }
+  .statLbl { font-size: 0.55rem; letter-spacing: 0.04em; }
+  .statBox { padding: 0.4rem 0.3rem; }
+
+  /* Grid section */
+  .gridSection { padding: 0.5rem 0.75rem; }
+  .sectionTitle { font-size: 1rem; gap: 0.4rem; }
+  .trackGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  .cyberCard { padding: 0.6rem; }
+  .cardCoverBox { margin-bottom: 0.6rem; }
+  .cardTitle { font-size: 0.8rem; }
+  .cardSub { font-size: 0.68rem; }
+
+  /* Track list even tighter */
+  .tableRow {
+    grid-template-columns: 42px 1fr auto;
+    padding: 0.5rem 0.6rem;
+  }
+  .tableThumb { width: 34px; height: 34px; }
+
+  /* Player compact */
+  .cyberPlayer { height: 66px; padding: 0 0.6rem; }
+  .playerTrackMeta {
+    max-width: 100px;
+    gap: 0.4rem;
+  }
+  .playerArtWrap { width: 40px; height: 40px; }
+  .playerTitleText { font-size: 0.75rem; }
+  .playerArtistText { font-size: 0.65rem; }
+  .controlButtons { gap: 0.35rem; }
+  .btnPlayMain { width: 36px; height: 36px; }
+  .progressContainer { display: none; }
+
+  /* Mobile dock tighter */
+  .mobileNavItem { font-size: 0.6rem; padding: 0.3rem 0.35rem; }
+
+  /* Visualizer */
+  .visualizerOverlay { padding: 1rem; }
+  .giantSpinningVinyl { width: 160px; height: 160px; }
+  .giantCenterArt { width: 60px; height: 60px; }
+  .fullSpectrumBars { height: 45px; }
+  .fullSpectrumBar { width: 4px; }
+
+  /* Modal */
+  .modalBackdrop { padding: 0.5rem; }
+  .modalWindow { padding: 1rem; }
+  .modalHead h3 { font-size: 0.95rem; }
+  .dropzoneCyber { padding: 1rem; margin-bottom: 0.85rem; }
 }
 
 

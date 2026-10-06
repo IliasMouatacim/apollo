@@ -284,3 +284,44 @@ h1, h2, h3, .heading-syne {
   color: var(--text-muted);
 }
 
+/* ========= GLOBAL MOBILE RESPONSIVE ========= */
+@media (max-width: 768px) {
+  .btn-neon {
+    padding: 0.6rem 1rem;
+    font-size: 0.78rem;
+    gap: 0.4rem;
+  }
+
+  .btn-cyber-outline {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+    gap: 0.35rem;
+  }
+
+  .input-cyber {
+    padding: 0.7rem 1rem;
+    font-size: 0.88rem;
+  }
+
+  .gradient-text-flashy {
+    line-height: 1.3;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-neon {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.72rem;
+  }
+
+  .btn-cyber-outline {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.72rem;
+  }
+
+  .input-cyber {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.82rem;
+  }
+}
+

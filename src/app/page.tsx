@@ -315,16 +315,16 @@ export default function Home() {
       prev.map(s => s.id === song.id ? { ...s, plays: updatedPlays } : s)
     );
 
-    // Save stream play count to Supabase Cloud Database
+    if (audioRef.current) {
+      audioRef.current.src = song.url;
+      audioRef.current.play().catch(e => console.error("Playback failed:", e));
+    }
+
+    // Save stream play count to Supabase Cloud Database (don't await this before playing to prevent mobile background play issues)
     try {
       await supabase.from('songs').update({ plays: updatedPlays }).eq('id', song.id);
     } catch (err) {
       console.error("Failed to update play count in Supabase", err);
-    }
-
-    if (audioRef.current) {
-      audioRef.current.src = song.url;
-      audioRef.current.play();
     }
   };
 
@@ -405,8 +405,6 @@ export default function Home() {
         });
         navigator.mediaSession.setActionHandler('previoustrack', prevSong);
         navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-        navigator.mediaSession.setActionHandler('seekbackward', skipBackward10);
-        navigator.mediaSession.setActionHandler('seekforward', skipForward10);
       } catch (err) {
         console.warn("MediaSession error", err);
       }
@@ -614,10 +612,10 @@ export default function Home() {
 
             <div className={styles.topActions}>
               <button className="btn-cyber-outline" onClick={() => setIsVisualizerOpen(true)}>
-                <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> FX Studio
+                <Sparkles size={16} style={{ color: 'var(--neon-pink)' }} /> <span className={styles.topActionLabel}>FX Studio</span>
               </button>
               <button className="btn-neon" onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}>
-                <Plus size={16} /> Add Track
+                <Plus size={16} /> <span className={styles.topActionLabel}>Add Track</span>
               </button>
             </div>
           </header>
@@ -668,7 +666,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 2, flexWrap: 'wrap', gap: '0.75rem' }}>
                 {activeFeaturedSong && (
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <button className="btn-neon" onClick={() => playSong(activeFeaturedSong)}>
@@ -692,7 +690,7 @@ export default function Home() {
           </section>
 
           {/* STUDIO STATS & PROMO ROW */}
-          <section style={{ margin: '0 2.5rem 1rem 2.5rem' }}>
+          <section className={styles.gridSection} style={{ paddingTop: 0 }}>
             <div className={styles.statsRow}>
               <div className={styles.statBox}>
                 <span className={styles.statLbl}>LIKES</span>
@@ -1195,7 +1193,7 @@ export default function Home() {
       <audio 
         ref={audioRef} 
         onTimeUpdate={handleTimeUpdate} 
-        onEnded={nextSong}
+        onEnded={handleSongEnd}
       />
     </>
   );
