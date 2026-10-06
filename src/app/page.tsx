@@ -1304,25 +1304,22 @@ export default function Home() {
             </div>
 
             {/* Studio EQ Panel */}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
+            <div className={styles.studioEqRow}>
               <button 
                 className={isNightcore ? "btn-neon" : "btn-cyber-outline"} 
                 onClick={() => setIsNightcore(!isNightcore)}
-                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
               >
-                <Zap size={14} /> Nightcore {isNightcore ? 'ON' : 'OFF'}
+                <Zap size={14} /> Nightcore
               </button>
               <button 
                 className={isBassBoost ? "btn-neon" : "btn-cyber-outline"} 
                 onClick={() => setIsBassBoost(!isBassBoost)}
-                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
               >
-                <Radio size={14} /> Bass Boost {isBassBoost ? 'ON' : 'OFF'}
+                <Radio size={14} /> Bass Boost
               </button>
               <button 
                 className={showLyrics ? "btn-neon" : "btn-cyber-outline"} 
                 onClick={() => setShowLyrics(!showLyrics)}
-                style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}
               >
                 <Sparkles size={14} /> Lyrics
               </button>
@@ -1330,30 +1327,11 @@ export default function Home() {
 
             {/* Lyrics Panel */}
             {showLyrics && (
-              <div style={{ 
-                width: '100%', 
-                maxWidth: '600px', 
-                height: '250px', 
-                overflowY: 'auto', 
-                background: 'rgba(16, 20, 32, 0.65)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: '16px',
-                padding: '1.5rem',
-                border: '1px solid var(--border-neon)',
-                textAlign: 'center',
-                boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.5)'
-              }}>
+              <div className={styles.lyricsPanel}>
                 {isFetchingLyrics ? (
-                  <div style={{ color: 'var(--neon-cyan)', fontStyle: 'italic', marginTop: '4rem' }}>Scanning audio signature for lyrics...</div>
+                  <div className={styles.lyricsLoading}>Scanning audio signature for lyrics...</div>
                 ) : (
-                  <pre style={{ 
-                    whiteSpace: 'pre-wrap', 
-                    fontFamily: 'Space Grotesk', 
-                    fontSize: '1.1rem',
-                    lineHeight: '1.8',
-                    color: '#fff',
-                    textShadow: '0 0 10px rgba(139, 92, 246, 0.5)'
-                  }}>
+                  <pre className={styles.lyricsText}>
                     {lyrics}
                   </pre>
                 )}
