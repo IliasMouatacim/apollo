@@ -1671,3 +1671,108 @@
   box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
 }
 
+/* ========= USER ACCOUNTS & PROFILE WIDGET ========= */
+.userProfileCard {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.userProfileCard:hover {
+  background: rgba(139, 92, 246, 0.12);
+  border-color: var(--border-neon);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.userAvatarWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-pink));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.userAvatarBadge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--neon-emerald);
+  border: 2px solid #080b12;
+  box-shadow: 0 0 8px var(--neon-emerald);
+}
+
+.userInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.userName {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userRole {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--neon-cyan);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ========= AUTH MODAL ========= */
+.authTabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-glass);
+  margin-bottom: 1.5rem;
+}
+
+.authTab {
+  flex: 1;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+}
+
+.authTabActive {
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-violet)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.3);
+}
+
+

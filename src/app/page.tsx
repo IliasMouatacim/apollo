@@ -6,7 +6,8 @@ import {
   Image as ImageIcon, Search, Disc, Flame, Sparkles, Maximize2, Zap, 
   Radio, Heart, List, Grid, Clock, BarChart3, Bookmark, Compass, ShieldCheck,
   RotateCcw, RotateCw, Shuffle, Repeat, Repeat1, Smartphone, ListMusic,
-  Sliders, Activity, FolderPlus, ArrowUp, ArrowDown, Trash2, AlignLeft, Layers, VolumeX
+  Sliders, Activity, FolderPlus, ArrowUp, ArrowDown, Trash2, AlignLeft, Layers, VolumeX,
+  User as UserIcon, LogIn, LogOut, UserPlus, KeyRound, Mail, Crown
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { extractAudioMetadata } from "@/lib/id3";
@@ -73,6 +74,16 @@ export default function Home() {
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'track'>('off');
   const [isMobilePlayerExpanded, setIsMobilePlayerExpanded] = useState(false);
+
+  // User Auth & Accounts State
+  const [user, setUser] = useState<any | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
   
   // Realtime Listening Party State
   const [isPartyMode, setIsPartyMode] = useState(false);
@@ -99,7 +110,7 @@ export default function Home() {
   const [canvasMode, setCanvasMode] = useState<'spectrum' | 'waveform' | 'circular'>('spectrum');
 
   // Web Audio API & DSP Equalizer / Speed State
-  const [eqGains, setEqGains] = useState<number[]>([0, 0, 0, 0, 0]); // 5 bands in dB
+  const [eqGains, setEqGains] = useState<number[]>([0, 0, 0, 0, 0]);
   const [activeEqPreset, setActiveEqPreset] = useState<string>('flat');
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isSlowedAndReverb, setIsSlowedAndReverb] = useState(false);
@@ -218,6 +229,77 @@ export default function Home() {
 
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [isDraggingOverPage, setIsDraggingOverPage] = useState(false);
+
+  // Initialize Supabase Auth Session
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data?.user) {
+        setUser(data.user);
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword,
+      });
+      if (error) throw error;
+      setUser(data.user);
+      setIsAuthModalOpen(false);
+      setAuthEmail("");
+      setAuthPassword("");
+    } catch (err: any) {
+      setAuthError(err?.message || "Failed to sign in.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword,
+        options: {
+          data: {
+            username: authUsername || authEmail.split('@')[0],
+          },
+        },
+      });
+      if (error) throw error;
+      if (data.user) setUser(data.user);
+      alert("🎉 Account created successfully!");
+      setIsAuthModalOpen(false);
+      setAuthEmail("");
+      setAuthPassword("");
+      setAuthUsername("");
+    } catch (err: any) {
+      setAuthError(err?.message || "Failed to create account.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   // Initialize Playlists from LocalStorage
   useEffect(() => {
@@ -1076,13 +1158,34 @@ export default function Home() {
           </div>
 
           <div className={styles.dockFooter}>
-            <div className={styles.dockStatus}>
-              <span className={styles.statusDot}></span>
-              <span>Web Audio Engine Live</span>
+            {/* USER ACCOUNT CARD WIDGET */}
+            <div className={styles.userProfileCard} onClick={() => setIsAuthModalOpen(true)}>
+              <div className={styles.userAvatarWrap}>
+                {user ? (user.user_metadata?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "A") : <UserIcon size={20} />}
+                <div className={styles.userAvatarBadge}></div>
+              </div>
+              <div className={styles.userInfo}>
+                <div className={styles.userName}>
+                  {user ? (user.user_metadata?.username || user.email?.split('@')[0]) : "Guest User"}
+                </div>
+                <div className={styles.userRole}>
+                  <Crown size={12} /> {user ? "VIP 999 Member" : "Click to Sign In"}
+                </div>
+              </div>
+              {user && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleSignOut(); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--neon-pink)', cursor: 'pointer', padding: '4px' }}
+                  title="Log Out"
+                >
+                  <LogOut size={16} />
+                </button>
+              )}
             </div>
+
             <button 
               className="btn-neon" 
-              style={{ width: '100%', marginTop: '1rem', fontSize: '0.8rem', padding: '0.6rem 1rem' }} 
+              style={{ width: '100%', marginTop: '0.25rem', fontSize: '0.8rem', padding: '0.6rem 1rem' }} 
               onClick={() => { setSelectedJuiceTrack(null); setIsModalOpen(true); }}
             >
               <Upload size={16} /> Upload Track
@@ -1143,6 +1246,15 @@ export default function Home() {
               >
                 <Radio size={16} style={{ color: isPartyMode ? 'white' : 'var(--neon-pink)' }} /> <span>Party Sync</span>
               </button>
+              
+              <button 
+                className="btn-cyber-outline" 
+                onClick={() => setIsAuthModalOpen(true)}
+                style={{ color: user ? 'var(--neon-cyan)' : 'inherit' }}
+              >
+                <UserIcon size={16} /> <span>{user ? (user.user_metadata?.username || "Account") : "Sign In"}</span>
+              </button>
+
               <button className="btn-cyber-outline" onClick={() => setIsQueueOpen(true)}>
                 <ListMusic size={16} style={{ color: 'var(--neon-amber)' }} /> Queue ({queue.length})
               </button>
@@ -1243,11 +1355,19 @@ export default function Home() {
 
             <div className={styles.promoBanner}>
               <div>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '0.2rem' }}>Web Audio DSP Engine & Equalizer Active</h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Enjoy 5-Band Equalizer, real-time Canvas Visualizer & Slowed + Reverb mode.</p>
+                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '0.2rem' }}>
+                  {user ? `Welcome back, ${user.user_metadata?.username || user.email?.split('@')[0]}!` : "Create an Account to Sync Playlists Across Devices"}
+                </h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {user ? "Your 999 Vault Account is active & synced with Supabase." : "Sign up for free to save custom playlists, likes & high-res streams."}
+                </p>
               </div>
-              <button className="btn-neon" style={{ fontSize: '0.78rem', padding: '0.5rem 1.2rem' }} onClick={() => setIsVisualizerOpen(true)}>
-                <Zap size={14} /> Open FX Studio
+              <button 
+                className="btn-neon" 
+                style={{ fontSize: '0.78rem', padding: '0.5rem 1.2rem' }} 
+                onClick={() => setIsAuthModalOpen(true)}
+              >
+                <Crown size={14} /> {user ? "Manage Account" : "Sign In / Register"}
               </button>
             </div>
           </section>
@@ -1804,6 +1924,116 @@ export default function Home() {
             </div>
           )}
         </>
+      )}
+
+      {/* USER AUTHENTICATION MODAL */}
+      {isAuthModalOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setIsAuthModalOpen(false)}>
+          <div className={styles.modalWindow} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h3 className="gradient-text-flashy">
+                {user ? "Your 999 Vault Account" : authMode === 'signin' ? "Sign In to Apollo" : "Create 999 Account"}
+              </h3>
+              <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={() => setIsAuthModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {user ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', textAlign: 'center', padding: '1rem 0' }}>
+                <div className={styles.userAvatarWrap} style={{ width: '64px', height: '64px', margin: '0 auto', fontSize: '1.6rem' }}>
+                  {user.user_metadata?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}
+                  <div className={styles.userAvatarBadge} style={{ width: '16px', height: '16px' }}></div>
+                </div>
+
+                <div>
+                  <h4 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>
+                    {user.user_metadata?.username || user.email?.split('@')[0]}
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{user.email}</p>
+                  <span style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.72rem', background: 'rgba(0, 240, 255, 0.15)', color: 'var(--neon-cyan)', padding: '0.2rem 0.75rem', borderRadius: '12px', border: '1px solid rgba(0, 240, 255, 0.3)' }}>
+                    👑 VIP 999 Vault Member
+                  </span>
+                </div>
+
+                <button 
+                  className="btn-cyber-outline" 
+                  style={{ width: '100%', color: 'var(--neon-pink)', marginTop: '0.5rem' }}
+                  onClick={handleSignOut}
+                >
+                  <LogOut size={16} /> Sign Out of Account
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className={styles.authTabs}>
+                  <button 
+                    className={`${styles.authTab} ${authMode === 'signin' ? styles.authTabActive : ''}`}
+                    onClick={() => { setAuthMode('signin'); setAuthError(null); }}
+                  >
+                    Sign In
+                  </button>
+                  <button 
+                    className={`${styles.authTab} ${authMode === 'signup' ? styles.authTabActive : ''}`}
+                    onClick={() => { setAuthMode('signup'); setAuthError(null); }}
+                  >
+                    Register Account
+                  </button>
+                </div>
+
+                {authError && (
+                  <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255, 0, 127, 0.15)', border: '1px solid var(--neon-pink)', borderRadius: 'var(--radius-md)', color: '#fff', fontSize: '0.85rem' }}>
+                    {authError}
+                  </div>
+                )}
+
+                <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp}>
+                  {authMode === 'signup' && (
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Username</label>
+                      <input 
+                        type="text" 
+                        className="input-cyber" 
+                        placeholder="e.g. Juice999" 
+                        value={authUsername}
+                        onChange={(e) => setAuthUsername(e.target.value)}
+                        required={authMode === 'signup'}
+                      />
+                    </div>
+                  )}
+
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Email Address</label>
+                    <input 
+                      type="email" 
+                      className="input-cyber" 
+                      placeholder="you@domain.com" 
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Password</label>
+                    <input 
+                      type="password" 
+                      className="input-cyber" 
+                      placeholder="••••••••••••" 
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-neon" style={{ width: '100%' }} disabled={authLoading}>
+                    {authLoading ? "Authenticating..." : authMode === 'signin' ? "Sign In to Account" : "Create Free Account"}
+                  </button>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* UP NEXT QUEUE DRAWER */}
