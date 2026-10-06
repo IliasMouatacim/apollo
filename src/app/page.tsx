@@ -1925,15 +1925,6 @@ export default function Home() {
                     className={styles.visualizerCanvas}
                   />
                 </div>
-
-                {/* Pulse Ring Active Indicator */}
-                <div className={styles.modePills}>
-                  <button 
-                    className={`${styles.modePill} ${styles.modePillActive}`}
-                  >
-                    Pulse Ring Mode
-                  </button>
-                </div>
               </>
             )}
 
@@ -2065,15 +2056,6 @@ export default function Home() {
                 )}
               </div>
             )}
-
-            <div>
-              <h2 className="gradient-text-flashy" style={{ fontSize: '1.8rem', marginBottom: '0.2rem' }}>
-                {currentSong ? currentSong.title : "No Track Playing"}
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '1rem' }}>
-                {currentSong ? currentSong.artist : "Select a track from your library to start"}
-              </p>
-            </div>
 
             {currentSong && (
               <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
