@@ -346,119 +346,91 @@ export default function Home() {
     }
   };
 
-  // Real-Time Canvas Render Loop
   useEffect(() => {
-    if (!isVisualizerOpen || visualizerTab !== 'canvas' || !canvasRef.current) {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      return;
-    }
+    if (!isVisualizerOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsVisualizerOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isVisualizerOpen]);
 
+  // Match the drawing buffer to the displayed size so the spectrum stays circular
+  // and text remains sharp at every viewport size and pixel density.
+  useEffect(() => {
+    if (!isVisualizerOpen || visualizerTab !== 'canvas' || !canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     let running = true;
+    let width = 0;
+    let height = 0;
+    const data = new Uint8Array(128);
+    const resize = () => {
+      const bounds = canvas.getBoundingClientRect();
+      width = bounds.width;
+      height = bounds.height;
+      const scale = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    resize();
 
     const render = () => {
       if (!running) return;
-      const width = canvas.width;
-      const height = canvas.height;
-
       ctx.clearRect(0, 0, width, height);
-
       const centerX = width / 2;
       const centerY = height / 2;
-      const radius = Math.min(width, height) * 0.28;
+      const size = Math.min(width, height);
+      const radius = size * 0.25;
+      const analyser = analyserNodeRef.current;
+      if (analyser && isPlaying) analyser.getByteFrequencyData(data);
+      else data.fill(0);
 
-      if (analyserNodeRef.current && isPlaying) {
-        const analyser = analyserNodeRef.current;
-        const bufferLength = analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        analyser.getByteFrequencyData(dataArray);
-
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#ff007f';
-
-        for (let i = 0; i < bufferLength; i += 2) {
-          const value = dataArray[i];
-          const angle = (i / bufferLength) * Math.PI * 2;
-          const barLen = (value / 255) * 75;
-
-          const x1 = centerX + Math.cos(angle) * radius;
-          const y1 = centerY + Math.sin(angle) * radius;
-          const x2 = centerX + Math.cos(angle) * (radius + barLen);
-          const y2 = centerY + Math.sin(angle) * (radius + barLen);
-
-          ctx.strokeStyle = i % 4 === 0 ? '#00f0ff' : '#ff007f';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.stroke();
-        }
-      } else {
-        // Idle concentric ring outline when paused or unstarted
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00f0ff';
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
-        ctx.lineWidth = 2;
+      ctx.strokeStyle = '#c1dc8a18';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius - 10, 0, Math.PI * 2);
+      ctx.stroke();
+      const bars = 80;
+      for (let i = 0; i < bars; i++) {
+        const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+        const value = data[Math.floor(i * data.length / bars)] / 255;
+        const length = 5 + value * size * 0.15;
+        ctx.strokeStyle = i % 3 === 0 ? '#d4ecaa' : '#91ad68';
+        ctx.lineWidth = size < 280 ? 2 : 3;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.moveTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+        ctx.lineTo(centerX + Math.cos(angle) * (radius + length), centerY + Math.sin(angle) * (radius + length));
         ctx.stroke();
       }
 
-      // RENDER SONG TITLE & ARTIST CENTERED INSIDE THE CIRCLE RING
-      if (currentSong) {
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        let titleText = currentSong.title;
-        if (titleText.length > 22) {
-          titleText = titleText.substring(0, 20) + '...';
-        }
-
-        // Title Text inside circle
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = '#00f0ff';
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '800 13px "Space Grotesk", sans-serif';
-        ctx.fillText(titleText, centerX, centerY - 7);
-
-        // Artist Text inside circle
-        let artistText = currentSong.artist;
-        if (artistText.length > 24) {
-          artistText = artistText.substring(0, 22) + '...';
-        }
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = '#ff007f';
-        ctx.fillStyle = 'rgba(255, 0, 127, 0.9)';
-        ctx.font = '600 10px "Space Grotesk", sans-serif';
-        ctx.fillText(artistText, centerX, centerY + 11);
-
-        ctx.restore();
-      } else {
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00f0ff';
-        ctx.fillStyle = 'rgba(0, 240, 255, 0.7)';
-        ctx.font = '600 12px "Space Grotesk", sans-serif';
-        ctx.fillText('⚡ APOLLO AUDIO', centerX, centerY);
-        ctx.restore();
-      }
-
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const fitText = (text: string, y: number, fontSize: number, color: string, weight: number) => {
+        ctx.font = `${weight} ${fontSize}px Arial, sans-serif`;
+        let fitted = text;
+        const maxWidth = radius * 1.65;
+        while (fitted.length > 1 && ctx.measureText(fitted).width > maxWidth) fitted = fitted.slice(0, -1);
+        if (fitted !== text) fitted = fitted.slice(0, -1) + '…';
+        ctx.fillStyle = color;
+        ctx.fillText(fitted, centerX, y, maxWidth);
+      };
+      fitText(currentSong?.title || 'Your listening room', centerY - 10, Math.max(12, size * 0.043), '#f1f2e9', 600);
+      fitText(currentSong?.artist || 'Pick a track to begin', centerY + 15, Math.max(10, size * 0.031), '#a0ac92', 400);
       animationFrameRef.current = requestAnimationFrame(render);
     };
-
     render();
-
     return () => {
       running = false;
+      observer.disconnect();
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [isVisualizerOpen, visualizerTab, canvasMode, isPlaying, currentSong]);
+  }, [isVisualizerOpen, visualizerTab, isPlaying, currentSong]);
 
   // Realtime Listening Party Synchronization
   useEffect(() => {
@@ -1771,24 +1743,26 @@ export default function Home() {
 
       {/* Visualizer Studio Overlay */}
       {isVisualizerOpen && (
-        <div className={styles.visualizerOverlay}>
+        <div className={styles.visualizerOverlay} role="dialog" aria-modal="true" aria-labelledby="studio-title">
           <div className={styles.visualizerHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-              <div className="gradient-text-flashy" style={{ fontSize: '1.6rem', fontWeight: 800 }}>APOLLO AUDIO FX STUDIO</div>
+            <div className={styles.studioHeadingGroup}>
+              <div className={styles.studioHeading}><span>THE LISTENING ROOM</span><h2 id="studio-title">Sound studio</h2></div>
               
               {/* Studio Tabs */}
               <div className={styles.modePills}>
                 <button 
                   className={`${styles.modePill} ${visualizerTab === 'canvas' ? styles.modePillActive : ''}`}
+                  aria-pressed={visualizerTab === 'canvas'}
                   onClick={() => setVisualizerTab('canvas')}
                 >
-                  <Activity size={15} /> Visualizer Canvas
+                  <Activity size={15} /> Visualizer
                 </button>
                 <button 
                   className={`${styles.modePill} ${visualizerTab === 'eq' ? styles.modePillActive : ''}`}
+                  aria-pressed={visualizerTab === 'eq'}
                   onClick={() => setVisualizerTab('eq')}
                 >
-                  <Sliders size={15} /> 5-Band EQ & Speed
+                  <Sliders size={15} /> Equalizer & speed
                 </button>
               </div>
             </div>
@@ -1803,6 +1777,7 @@ export default function Home() {
               <>
                 {/* Canvas Render Window */}
                 <div className={styles.canvasContainer}>
+                  <span className={styles.canvasCaption}>{isPlaying ? "LIVE SPECTRUM" : "READY WHEN YOU ARE"}</span>
                   <canvas 
                     ref={canvasRef} 
                     width={800} 
@@ -1815,7 +1790,7 @@ export default function Home() {
 
             {visualizerTab === 'eq' && (
               <div className={styles.eqPanel}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className={styles.eqPanelHeader}>
                   <div>
                     <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>5-Band Graphic Equalizer</h3>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Tune sound frequencies directly in your browser using Web Audio API</p>
@@ -1850,7 +1825,8 @@ export default function Home() {
                     <div key={label} className={styles.eqCol}>
                       <span className={styles.eqVal}>{eqGains[i] > 0 ? `+${eqGains[i]}` : eqGains[i]}dB</span>
                       <input 
-                        type="range" 
+                        type="range"
+                        aria-label={`${label} gain`}
                         min="-12" 
                         max="12" 
                         step="1"
@@ -1872,8 +1848,8 @@ export default function Home() {
                 </div>
 
                 {/* Speed & Pitch Control */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--border-glass)' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div className={styles.studioEffects}>
+                  <div className={styles.studioQuickEffects}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Quick Effects:</span>
                     <button 
                       className={isNightcore ? "btn-neon" : "btn-cyber-outline"} 
@@ -1909,7 +1885,7 @@ export default function Home() {
 
 
             {currentSong && (
-              <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+              <div className={styles.studioTransport}>
                 <button 
                   className={styles.btnControlIcon} 
                   onClick={() => setIsShuffle(!isShuffle)}

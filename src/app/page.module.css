@@ -1951,3 +1951,49 @@
   .recordArt { top: 85px; right: -165px; }
   .featureCopy > button { margin-top: 17px; }
 }
+
+/* A scrollable studio stage keeps the header and controls visible on short screens. */
+.visualizerOverlay { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 24px; padding: max(24px, env(safe-area-inset-top)) clamp(18px, 4vw, 56px) max(24px, env(safe-area-inset-bottom)); overflow: hidden; height: 100dvh; background: #11170f; }
+.visualizerHeader { margin: 0; gap: 20px; flex-wrap: wrap; min-width: 0; align-items: center; }
+.studioHeadingGroup { display: flex; align-items: center; gap: clamp(20px, 4vw, 56px); flex-wrap: wrap; min-width: 0; }
+.studioHeading > span { font-size: 9px; letter-spacing: 2px; color: #96a584; }
+.studioHeading h2 { font-size: 28px; font-weight: 500; margin-top: 7px; letter-spacing: -1px; }
+.visualizerHeader > button { margin-left: auto; flex-shrink: 0; }
+.visualizerHeader .modePills { flex-wrap: wrap; border-radius: 9px; padding: 4px; gap: 4px; }
+.visualizerHeader .modePill { border-radius: 6px; font-size: 12px; font-weight: 500; padding: 10px 15px; }
+.visualizerBody { min-height: 0; overflow-y: auto; justify-content: flex-start; gap: 28px; padding: 24px 0; width: 100%; }
+.canvasContainer { flex: 0 0 auto; width: 100%; max-width: 1000px; height: clamp(240px, 49dvh, 440px); border-radius: 16px; border: 1px solid #c1dc8a20; background: radial-gradient(ellipse at center, #212b1b, #151c12 65%); box-shadow: none; }
+.visualizerCanvas { width: 100%; height: 100%; }
+.canvasCaption { position: absolute; left: 22px; top: 20px; font-size: 8px; letter-spacing: 1.8px; color: #8d9d7c; pointer-events: none; }
+.studioTransport { display: flex; align-items: center; justify-content: center; gap: clamp(14px, 3vw, 28px); padding: 0 10px 8px; flex-shrink: 0; }
+.eqPanel { flex-shrink: 0; }
+.eqPanelHeader { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+.eqPanelHeader p { margin-top: 7px; line-height: 1.6; }
+.studioEffects { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding-top: 18px; border-top: 1px solid var(--border-glass); }
+.studioQuickEffects { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.studioEffects .modePills { flex-wrap: wrap; }
+.presetChipActive { background: #c1dc8a15 !important; border-color: #c1dc8a60 !important; color: #c1dc8a !important; box-shadow: none; }
+.slowedToggleBtnActive { background: #c1dc8a !important; border-color: #c1dc8a !important; color: #243318 !important; box-shadow: none !important; }
+.eqSliderVertical { writing-mode: vertical-lr; direction: rtl; appearance: auto; }
+@media (max-width: 768px) {
+  .visualizerOverlay { padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom)); gap: 16px; }
+  .visualizerHeader { flex-direction: row; text-align: left; gap: 12px; }
+  .studioHeadingGroup { display: contents; }
+  .studioHeading { order: 0; }
+  .studioHeading h2 { font-size: 24px; }
+  .visualizerHeader > button { order: 1; padding: 9px 11px; font-size: 10px; gap: 6px; }
+  .visualizerHeader > button svg { width: 15px; }
+  .visualizerHeader .modePills { order: 2; width: 100%; justify-content: center; margin-top: 8px; }
+  .visualizerHeader .modePill { flex: 1; justify-content: center; padding: 10px 7px; font-size: 11px; }
+  .visualizerBody { padding: 8px 0; gap: 24px; }
+  .canvasContainer { height: clamp(240px, 43dvh, 360px); border-radius: 12px; }
+  .canvasCaption { left: 16px; top: 16px; font-size: 7px; }
+  .studioTransport { gap: 15px; }
+  .studioTransport > .btnPlayMain { width: 52px !important; height: 52px !important; }
+  .studioTransport svg { width: 20px; }
+  .eqPanel { padding: 20px 16px; gap: 18px; }
+  .eqSlidersGrid { gap: 8px; }
+  .eqPanelHeader h3 { font-size: 17px !important; }
+  .eqPanelHeader p { font-size: 11px !important; }
+  .slowedToggleBtn { font-size: 11px; padding: 9px 12px; }
+}
