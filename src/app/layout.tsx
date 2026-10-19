@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Apollo 999 - Cyber Music Streamer",
-  description: "Next-gen cyber music streaming platform & Juice WRLD Vault.",
+  title: "Apollo — Your sound. Your space.",
+  description: "A home for your music. Collect your favorite tracks, find your frequency, and make yourself at home.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#05060a",
+  themeColor: "#111310",
 };
 
 export default function RootLayout({

@@ -74,7 +74,7 @@ export default function Home() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'artist' | 'plays'>('newest');
   const [vibeFilter, setVibeFilter] = useState<'all' | 'unreleased' | 'synthwave' | 'trap' | 'chill'>('all');
   
-  // Audio Queue State
+  // Next up State
   const [queue, setQueue] = useState<Song[]>([]);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
@@ -847,6 +847,8 @@ export default function Home() {
         list = list.filter(s => s.title.toLowerCase().includes('unreleased') || s.title.toLowerCase().includes('vault') || s.album?.toLowerCase().includes('vault'));
       } else if (vibeFilter === 'synthwave') {
         list = list.filter(s => s.genre?.toLowerCase().includes('synth') || s.album?.toLowerCase().includes('cyber'));
+      } else if (vibeFilter === 'chill') {
+        list = list.filter(s => /chill|ambient|lo[ -]?fi/.test(`${s.genre || ''} ${s.album || ''}`.toLowerCase()));
       }
     }
 
@@ -895,7 +897,7 @@ export default function Home() {
         <aside className={styles.cyberDock}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <div className={styles.brandWrap}>
-              <div className={`${styles.brandText} gradient-text-flashy`}>APOLLO</div>
+              <div className={styles.brandMark}><Disc size={27} strokeWidth={1.5} /></div><div className={styles.brandText}>apollo<span>YOUR SOUND. YOUR SPACE.</span></div>
             </div>
 
             {/* MAIN NAVIGATION */}
@@ -905,7 +907,7 @@ export default function Home() {
                 className={`${styles.navItem} ${activeTab === 'my-library' && !activePlaylistId ? styles.navItemActive : ''}`}
                 onClick={() => { setActiveTab('my-library'); setActivePlaylistId(null); }}
               >
-                <Disc size={18} /> Feed & Library
+                <Disc size={18} /> Discover
                 <span className={styles.dockBadge}>{songs.length}</span>
               </button>
 
@@ -913,7 +915,7 @@ export default function Home() {
                 className={styles.navItem}
                 onClick={() => setIsVisualizerOpen(true)}
               >
-                <BarChart3 size={18} style={{ color: 'var(--neon-cyan)' }} /> Visualizer Studio
+                <BarChart3 size={18} style={{ color: 'var(--neon-cyan)' }} /> Sound Studio
               </button>
             </nav>
 
@@ -932,15 +934,15 @@ export default function Home() {
                 className={styles.navItem} 
                 onClick={() => setIsQueueOpen(true)}
               >
-                <ListMusic size={18} style={{ color: 'var(--neon-amber)' }} /> Audio Queue
+                <ListMusic size={18} style={{ color: 'var(--neon-amber)' }} /> Next up
                 {queue.length > 0 && <span className={styles.dockBadge} style={{ background: 'rgba(255,170,0,0.15)', color: 'var(--neon-amber)' }}>{queue.length}</span>}
               </button>
             </nav>
 
-            {/* CUSTOM PLAYLISTS SECTION */}
+            {/* YOUR PLAYLISTS SECTION */}
             <div className={styles.navSection}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '0.5rem' }}>
-                <div className={styles.navLabel}>CUSTOM PLAYLISTS</div>
+                <div className={styles.navLabel}>YOUR PLAYLISTS</div>
                 <button 
                   onClick={() => setIsPlaylistModalOpen(true)}
                   style={{ background: 'none', border: 'none', color: 'var(--neon-cyan)', cursor: 'pointer', padding: '2px' }}
@@ -964,7 +966,7 @@ export default function Home() {
 
             {/* VIBE TAGS */}
             <div className={styles.navSection}>
-              <div className={styles.navLabel}>GENRES & VIBES</div>
+              <div className={styles.navLabel}>IN ROTATION</div>
               <div className={styles.vibeTag} onClick={() => setVibeFilter(vibeFilter === 'unreleased' ? 'all' : 'unreleased')}>
                 <span className={styles.vibeDot} style={{ color: '#ff007f' }}></span> Unreleased 999
               </div>
@@ -986,7 +988,7 @@ export default function Home() {
                   {user ? (user.user_metadata?.username || user.email?.split('@')[0]) : "Guest User"}
                 </div>
                 <div className={styles.userRole}>
-                  <Crown size={12} /> {user?.email === 'ilias.mouatacim@gmail.com' ? "Master Owner (All Songs)" : user ? "VIP Member (Private Vault)" : "Click to Sign In"}
+                  <Crown size={12} /> {user?.email === 'ilias.mouatacim@gmail.com' ? "Personal account" : user ? "Personal account" : "Click to Sign In"}
                 </div>
               </div>
               {user && (
@@ -1011,7 +1013,7 @@ export default function Home() {
         </aside>
 
         {/* Main Center Content View */}
-        <main className={styles.contentArea}>
+        <div className={styles.contentArea}>
           {/* Top Search Bar */}
           <header className={styles.topBar}>
             {/* Mobile Header Branding */}
@@ -1032,8 +1034,9 @@ export default function Home() {
             <div className={styles.searchBox}>
               <Search size={18} style={{ color: 'var(--neon-cyan)' }} />
               <input 
+                aria-label="Search your library"
                 type="text" 
-                placeholder="Live search songs, artists, or albums..." 
+                placeholder="Search your music, artists, albums..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -1086,127 +1089,49 @@ export default function Home() {
             </div>
           </header>
 
-          {/* MELO-INSPIRED HERO ROW (SPLIT CARDS) */}
-          <section className={styles.heroRowSplit}>
-            {/* Left Card: Playlist of the Day */}
-            <div className={styles.heroCardLeft}>
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
-                  {songs.length} tracks • Private Account Vault
-                </div>
-                <h3 className="gradient-text-flashy" style={{ fontSize: '1.4rem', fontWeight: 800 }}>
-                  Spotlight Track
-                </h3>
-              </div>
+          <div className={styles.pageIntro}>
+            <div><div className={styles.eyebrow}>YOUR DAILY FREQUENCY</div><h1>A little louder. A little more you<span>.</span></h1><p>A home for the tracks you can’t stop coming back to.</p></div>
+            <span className={styles.introStamp}><span /> IN YOUR OWN WORLD</span>
+          </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '1rem 0' }}>
-                <img 
-                  src={activeFeaturedSong?.cover_url || "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&q=80"} 
-                  alt="Spotlight" 
-                  style={{ width: '130px', height: '130px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 12px 30px rgba(0,0,0,0.6)', transform: 'rotate(-4deg)' }} 
-                />
+          <section className={styles.featureGrid} aria-label="Featured music">
+            <div className={styles.featureHero}>
+              <div className={styles.heroOrbit} aria-hidden="true" />
+              <div className={styles.recordArt} aria-hidden="true"><div className={styles.recordLabel}><Disc size={35} strokeWidth={1} /><span>APOLLO RECORDS</span><small>VOL. 001 / SIDE A</small></div></div>
+              <div className={styles.featureCopy}>
+                <span className={styles.featureBadge}><span /> THE PERSONAL COLLECTION</span>
+                <h2>Your world.<br />On repeat.</h2>
+                <p>{activeFeaturedSong ? `${activeFeaturedSong.title} — ${activeFeaturedSong.artist}` : 'The deep cuts. The late nights. The songs that feel like you.'}</p>
+                <button className="btn-neon" onClick={() => activeFeaturedSong ? playSong(activeFeaturedSong) : setIsModalOpen(true)}><Play size={16} fill="currentColor" />{activeFeaturedSong ? 'Start listening' : 'Build your collection'}</button>
               </div>
-
-              {activeFeaturedSong && (
-                <button className="btn-cyber-outline" style={{ width: '100%', fontSize: '0.8rem' }} onClick={() => playSong(activeFeaturedSong)}>
-                  <Play size={14} fill="currentColor" /> Play Spotlight
-                </button>
-              )}
+              <div className={styles.heroFootnote}><span>NO ALGORITHM. JUST YOU.</span><span>33⅓ RPM</span></div>
             </div>
-
-            {/* Right Card: Featured Banner Deck */}
-            <div className={styles.heroCardRight}>
-              <div className={styles.watermarkText}>
-                {activeFeaturedSong ? activeFeaturedSong.title : "APOLLO AUDIO"}
-              </div>
-
-              <div style={{ position: 'relative', zIndex: 2 }}>
-                <div className={styles.heroTag}>
-                  <Flame size={14} /> Featured Stream
-                </div>
-                <h1 className={styles.heroTitle}>
-                  {activeFeaturedSong ? activeFeaturedSong.title : "Between Death and Dreams"}
-                </h1>
-                <p className={styles.heroSub}>
-                  {activeFeaturedSong ? `${activeFeaturedSong.artist} • ${activeFeaturedSong.album || 'Single Release'}` : "Brand of Sacrifice • April 2026"}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 2 }}>
-                {activeFeaturedSong && (
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button className="btn-neon" onClick={() => playSong(activeFeaturedSong)}>
-                      {currentSong?.id === activeFeaturedSong.id && isPlaying ? <Pause size={18} /> : <Play size={18} fill="white" />}
-                      {currentSong?.id === activeFeaturedSong.id && isPlaying ? "Pause Track" : "Play Stream"}
-                    </button>
-                    <button 
-                      className="btn-cyber-outline" 
-                      onClick={() => toggleLike(activeFeaturedSong.id)}
-                      style={{ color: likedSongIds.includes(activeFeaturedSong.id) ? 'var(--neon-pink)' : 'inherit' }}
-                    >
-                      <Heart size={16} fill={likedSongIds.includes(activeFeaturedSong.id) ? "var(--neon-pink)" : "none"} />
-                    </button>
-                  </div>
-                )}
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'Space Grotesk' }}>
-                  {formatTime(progress)} / {formatTime(duration)}
-                </div>
-              </div>
+            <div className={styles.spotlightCard}>
+              <div className={styles.spotlightTop}><span>THE LISTENING ROOM</span><Sparkles size={18} /></div>
+              <div className={styles.spotlightArtwork} aria-hidden="true"><div /><div /><div /><div /><div /><div /><div /></div>
+              <div className={styles.spotlightBottom}><div><span>GO A LITTLE DEEPER</span><h3>Feel every frequency.</h3><p>Your sound, fine-tuned to you.</p></div><button aria-label="Open sound studio" onClick={() => setIsVisualizerOpen(true)}><ArrowUp size={21} /></button></div>
             </div>
           </section>
 
-          {/* STUDIO STATS & PROMO ROW */}
-          <section style={{ margin: '0 2.5rem 1rem 2.5rem' }}>
-            <div className={styles.statsRow}>
-              <div className={styles.statBox}>
-                <span className={styles.statLbl}>LIKES</span>
-                <span className={styles.statVal}>{totalLikesCount}</span>
-              </div>
-              <div className={styles.statBox}>
-                <span className={styles.statLbl}>TRACKS</span>
-                <span className={styles.statVal}>{totalTracksCount}</span>
-              </div>
-              <div className={styles.statBox}>
-                <span className={styles.statLbl}>TOTAL STREAMS</span>
-                <span className={styles.statVal}>{totalStreamsCount.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <div className={styles.promoBanner}>
-              <div>
-                <h4 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginBottom: '0.2rem' }}>
-                  {user?.email === 'ilias.mouatacim@gmail.com' 
-                    ? "Welcome Master Owner (ilias.mouatacim@gmail.com)!" 
-                    : user 
-                    ? `Account Vault Active: ${user.email}` 
-                    : "Create an Account to Protect & Isolate Your Songs"}
-                </h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  {user?.email === 'ilias.mouatacim@gmail.com'
-                    ? "You have master owner access to all uploaded tracks & discography."
-                    : user 
-                    ? "Any song you upload is strictly private to your account." 
-                    : "Uploads are saved securely to your personal account so no one else has access."}
-                </p>
-              </div>
-              <button 
-                className="btn-neon" 
-                style={{ fontSize: '0.78rem', padding: '0.5rem 1.2rem' }} 
-                onClick={() => setIsAuthModalOpen(true)}
-              >
-                <Crown size={14} /> {user ? "Account Details" : "Sign In / Register"}
-              </button>
+          <section className={styles.moodSection} aria-label="Browse by mood">
+            <div className={styles.moodHeading}><h2>Find your frequency</h2><span>A mood for every moment</span></div>
+            <div className={styles.moodGrid}>
+              {([
+                {name: 'After hours', sub: 'Slow down. Stay a while.', filter: 'chill', art: styles.moodNight, icon: <Disc size={20} />},
+                {name: 'Off the grid', sub: 'A different kind of energy.', filter: 'synthwave', art: styles.moodWave, icon: <Activity size={20} />},
+                {name: 'From the vault', sub: 'Rare finds. Real feelings.', filter: 'unreleased', art: styles.moodVault, icon: <Flame size={20} />},
+              ] as const).map(mood => <button key={mood.name} className={`${styles.moodCard} ${mood.art} ${vibeFilter === mood.filter ? styles.moodSelected : ''}`} onClick={() => {setVibeFilter(vibeFilter === mood.filter ? 'all' : mood.filter); document.getElementById('music-library')?.scrollIntoView({behavior:'smooth',block:'start'});}}><div className={styles.moodArt} aria-hidden="true" /><span className={styles.moodIcon}>{mood.icon}</span><div><h3>{mood.name}</h3><p>{mood.sub}</p></div><span className={styles.moodArrow}><ArrowUp size={17} /></span></button>)}
             </div>
           </section>
 
           {/* Content Track Section */}
-          <section className={styles.gridSection}>
+          <section id="music-library" className={styles.gridSection}>
             {/* SEARCH, SORT & FILTER TOOLBAR */}
             <div className={styles.filterBar}>
               <h2 className={styles.sectionTitle} style={{ margin: 0 }}>
                 {activeTab === 'my-library' && <Disc style={{ color: 'var(--neon-cyan)' }} />}
                 {activeTab === 'favorites' && <Heart style={{ color: 'var(--neon-pink)' }} />}
-                {activePlaylistId ? playlists.find(p => p.id === activePlaylistId)?.name : activeTab === 'my-library' ? "Your Music Collection" : "Your Favorites"}
+                {activePlaylistId ? playlists.find(p => p.id === activePlaylistId)?.name : activeTab === 'my-library' ? "Made of your music" : "Your favorites"}
               </h2>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1221,11 +1146,12 @@ export default function Home() {
                     className={`${styles.filterChip} ${vibeFilter === 'unreleased' ? styles.filterChipActive : ''}`}
                     onClick={() => setVibeFilter(vibeFilter === 'unreleased' ? 'all' : 'unreleased')}
                   >
-                    🔥 Unreleased
+                    Unreleased
                   </button>
                 </div>
 
                 <select 
+                  aria-label="Sort tracks"
                   className={styles.sortSelect} 
                   value={sortBy} 
                   onChange={(e) => setSortBy(e.target.value as any)}
@@ -1257,16 +1183,16 @@ export default function Home() {
             </div>
 
             {displayedSongs.length === 0 ? (
-              <div className="cyber-panel" style={{ padding: '3rem', textAlign: 'center', margin: '2rem 0' }}>
-                <Music size={48} style={{ color: 'var(--neon-pink)', margin: '0 auto 1rem' }} />
+              <div className={styles.libraryEmpty}>
+                <div className={styles.emptyRecord}><Music size={25} /></div>
                 <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-                  {activeTab === 'favorites' ? "No Favorites Saved Yet" : searchQuery ? "No Songs Found Matching Search" : "No Songs in Your Private Vault"}
+                  {activeTab === 'favorites' ? "Keep your favorites close." : searchQuery || vibeFilter !== 'all' || activePlaylistId ? "Nothing here. Yet." : "Every collection starts with a track."}
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                  {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Upload audio files to add them to your personal account library."}
+                  {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Bring your favorite audio files. Make this space your own."}
                 </p>
                 <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
-                  <Upload size={16} /> Upload Audio File
+                  <Plus size={16} /> Add your first track
                 </button>
               </div>
             ) : viewMode === 'list' ? (
@@ -1308,7 +1234,7 @@ export default function Home() {
                           className="btn-cyber-outline" 
                           style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }}
                           onClick={(e) => addToQueue(song, e)}
-                          title="Add to Audio Queue"
+                          title="Add to Next up"
                         >
                           <Plus size={14} /> Queue
                         </button>
@@ -1378,8 +1304,14 @@ export default function Home() {
               </div>
             )}
           </section>
-        </main>
+        </div>
       </div>
+
+      {!currentSong && <div className={`${styles.cyberPlayer} ${styles.idlePlayer}`}>
+        <div className={styles.idleTrack}><div className={styles.idleArt}><Music size={23} /></div><div><strong>Your next obsession awaits</strong><span>Pick a track and make yourself at home.</span></div></div>
+        <div className={styles.idleControls}><div><Shuffle size={16} /><SkipBack size={18} /><button aria-label="Add music to start listening" onClick={() => setIsModalOpen(true)}><Play size={18} fill="currentColor" /></button><SkipForward size={18} /><Repeat size={16} /></div><span>0:00 <i /> 0:00</span></div>
+        <div className={styles.idleQuality}><span /> YOUR MUSIC, FULL FIDELITY <Volume2 size={19} /></div>
+      </div>}
 
       {/* Futuristic Cyberdeck Player (Desktop + Mobile Mini Player & Expanded Sheet) */}
       {currentSong && (
@@ -1661,7 +1593,7 @@ export default function Home() {
               <h3 className="gradient-text-flashy">
                 {user ? "Your Private 999 Account" : authMode === 'signin' ? "Sign In to Apollo" : "Create Private Account"}
               </h3>
-              <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={() => setIsAuthModalOpen(false)}>
+              <button aria-label="Close dialog" className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={() => setIsAuthModalOpen(false)}>
                 <X size={18} />
               </button>
             </div>
@@ -1777,7 +1709,7 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <ListMusic size={22} style={{ color: 'var(--neon-amber)' }} />
                 <h3 className="gradient-text-flashy" style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
-                  Audio Queue ({queue.length})
+                  Next up ({queue.length})
                 </h3>
               </div>
               <button className="btn-cyber-outline" style={{ padding: '0.35rem 0.6rem' }} onClick={() => setIsQueueOpen(false)}>
@@ -2011,7 +1943,7 @@ export default function Home() {
           <div className={styles.modalWindow}>
             <div className={styles.modalHead}>
               <h3 className="gradient-text-flashy">Create Custom Playlist</h3>
-              <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={() => setIsPlaylistModalOpen(false)}>
+              <button aria-label="Close dialog" className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={() => setIsPlaylistModalOpen(false)}>
                 <X size={18} />
               </button>
             </div>
@@ -2060,7 +1992,7 @@ export default function Home() {
       <nav className={styles.mobileCyberDock}>
         <button 
           className={`${styles.mobileNavItem} ${activeTab === 'my-library' ? styles.mobileNavItemActive : ''}`}
-          onClick={() => setActiveTab('my-library')}
+          onClick={() => {setActiveTab('my-library'); setActivePlaylistId(null);}}
         >
           <Disc size={20} />
           <span>Library</span>
@@ -2068,7 +2000,7 @@ export default function Home() {
 
         <button 
           className={`${styles.mobileNavItem} ${activeTab === 'favorites' ? styles.mobileNavItemActive : ''}`}
-          onClick={() => setActiveTab('favorites')}
+          onClick={() => {setActiveTab('favorites'); setActivePlaylistId(null);}}
         >
           <Heart size={20} style={{ color: activeTab === 'favorites' ? 'var(--neon-pink)' : 'inherit' }} />
           <span>Favorites</span>
@@ -2341,7 +2273,7 @@ function UploadModal({
           <h3 className="gradient-text-flashy">
             {files.length > 1 ? `Batch Upload Album (${files.length} Files)` : "Upload Music Track"}
           </h3>
-          <button className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={onClose}>
+          <button aria-label="Close dialog" className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={onClose}>
             <X size={18} />
           </button>
         </div>
