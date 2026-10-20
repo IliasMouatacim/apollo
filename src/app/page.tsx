@@ -49,19 +49,16 @@ export default function Home() {
   const [likedSongIds, setLikedSongIds] = useState<string[]>([]);
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'track'>('off');
-  const [isMobilePlayerExpanded, setIsMobilePlayerExpanded] = useState(false);(false);
+  const [isMobilePlayerExpanded, setIsMobilePlayerExpanded] = useState(false);
 
-  // User Auth & Master Owner Account State
-  const [user, setUser] = useState<any | null>({
-    email: 'ilias.mouatacim@gmail.com',
-    user_metadata: { username: 'Ilias' },
-    id: 'owner-master-999'
-  });
+  // Supabase is the only source of truth for authentication.
+  const [user, setUser] = useState<any | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [authEmail, setAuthEmail] = useState("ilias.mouatacim@gmail.com");
-  const [authPassword, setAuthPassword] = useState("ilias2005");
-  const [authUsername, setAuthUsername] = useState("Ilias");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   
@@ -112,18 +109,16 @@ export default function Home() {
   const [droppedFiles, setDroppedFiles] = useState<File[]>([]);
   const [isDraggingOverPage, setIsDraggingOverPage] = useState(false);
 
-  // Initialize Supabase Auth Session & Default to Master Owner
+  // Restore only a real Supabase session. Signed-out visitors remain signed out.
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setUser(data.user);
-      }
+    supabase.auth.getUser().then(({ data, error }) => {
+      setUser(error ? null : data.user ?? null);
+      setAuthReady(true);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-      }
+      setUser(session?.user ?? null);
+      setAuthReady(true);
     });
 
     return () => {
@@ -132,8 +127,27 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchSongs();
-  }, [user]);
+    if (!authReady) return;
+    if (user) fetchSongs(user.id);
+    else {
+      setSongs([]);
+      setLikedSongIds([]);
+      setCurrentSong(null);
+      setQueue([]);
+    }
+  }, [user, authReady]);
+
+  const requireAccount = (action: () => void) => {
+    if (!user) {
+      setAuthMode('signup');
+      setAuthError('Create an account or sign in to add and access your private music.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    action();
+  };
+
+  const openUpload = () => requireAccount(() => setIsModalOpen(true));
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,19 +159,7 @@ export default function Home() {
         password: authPassword,
       });
       
-      if (error) {
-        // If master account ilias.mouatacim@gmail.com with password ilias2005
-        if (authEmail.trim().toLowerCase() === 'ilias.mouatacim@gmail.com' && authPassword === 'ilias2005') {
-          setUser({
-            email: 'ilias.mouatacim@gmail.com',
-            user_metadata: { username: 'Ilias' },
-            id: 'owner-master-999'
-          });
-          setIsAuthModalOpen(false);
-          return;
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       if (data?.user) {
         setUser(data.user);
@@ -185,14 +187,13 @@ export default function Home() {
         },
       });
       if (error) throw error;
-      const loggedUser = data.user || {
-        email: authEmail,
-        user_metadata: { username: authUsername || authEmail.split('@')[0] },
-        id: `user-${Date.now()}`
-      };
-      setUser(loggedUser);
-      alert("🎉 Account active! All your uploaded songs will be strictly private to your account.");
-      setIsAuthModalOpen(false);
+      if (data.session?.user) {
+        setUser(data.session.user);
+        setIsAuthModalOpen(false);
+      } else {
+        setAuthMode('signin');
+        setAuthError('Account created. Check your email to confirm it, then sign in.');
+      }
     } catch (err: any) {
       setAuthError(err?.message || "Failed to create account.");
     } finally {
@@ -203,31 +204,37 @@ export default function Home() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setSongs([]);
+    setCurrentSong(null);
+    setQueue([]);
+    setPlaylists([]);
+    setIsAuthModalOpen(false);
   };
 
-  // Initialize Playlists from LocalStorage
+  // Keep local playlists separated by account on shared browsers.
   useEffect(() => {
+    if (!authReady || !user) {
+      setPlaylists([]);
+      return;
+    }
     try {
-      const saved = localStorage.getItem('apollo_custom_playlists');
+      const storageKey = `apollo_custom_playlists_${user.id}`;
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         setPlaylists(JSON.parse(saved));
       } else {
-        const defaults: Playlist[] = [
-          { id: 'p1', name: '999 Vault Grails', color: '#ff007f', songIds: [] },
-          { id: 'p2', name: 'Synthwave & Cyber', color: '#00f0ff', songIds: [] }
-        ];
-        setPlaylists(defaults);
-        localStorage.setItem('apollo_custom_playlists', JSON.stringify(defaults));
+        setPlaylists([]);
       }
     } catch (e) {
       console.warn("Failed to read playlists from localStorage", e);
     }
-  }, []);
+  }, [authReady, user]);
 
   const savePlaylists = (updated: Playlist[]) => {
+    if (!user) return;
     setPlaylists(updated);
     try {
-      localStorage.setItem('apollo_custom_playlists', JSON.stringify(updated));
+      localStorage.setItem(`apollo_custom_playlists_${user.id}`, JSON.stringify(updated));
     } catch (e) {}
   };
 
@@ -258,10 +265,6 @@ export default function Home() {
     });
     savePlaylists(updated);
   };
-
-  useEffect(() => {
-    fetchSongs();
-  }, []);
 
   // Web Audio API Setup
   const initWebAudio = () => {
@@ -432,10 +435,11 @@ export default function Home() {
     };
   }, [isVisualizerOpen, visualizerTab, isPlaying, currentSong]);
 
-  // Realtime Listening Party Synchronization
+  // Realtime state is scoped to the signed-in account so track details never
+  // cross account boundaries.
   useEffect(() => {
-    if (isPartyMode) {
-      const channel = supabase.channel('apollo_party', {
+    if (isPartyMode && user) {
+      const channel = supabase.channel(`apollo_party_${user.id}`, {
         config: { broadcast: { self: false } },
       });
 
@@ -470,7 +474,7 @@ export default function Home() {
     return () => {
       if (partyChannelRef.current) supabase.removeChannel(partyChannelRef.current);
     };
-  }, [isPartyMode, currentSong]);
+  }, [isPartyMode, currentSong, user]);
 
   const broadcastPlaybackState = (isPlayingState: boolean, song: Song | null = currentSong) => {
     if (isPartyMode && partyChannelRef.current && song && audioRef.current) {
@@ -494,7 +498,7 @@ export default function Home() {
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
       dragCounter++;
-      if (e.dataTransfer?.types?.includes('Files')) {
+      if (user && e.dataTransfer?.types?.includes('Files')) {
         setIsDraggingOverPage(true);
       }
     };
@@ -523,8 +527,14 @@ export default function Home() {
         );
 
         if (audioFiles.length > 0) {
-          setDroppedFiles(audioFiles);
-          setIsModalOpen(true);
+          if (user) {
+            setDroppedFiles(audioFiles);
+            setIsModalOpen(true);
+          } else {
+            setAuthMode('signup');
+            setAuthError('Create an account or sign in before uploading music.');
+            setIsAuthModalOpen(true);
+          }
         } else {
           alert("Please drop valid audio files (.mp3, .wav, .flac, .m4a)");
         }
@@ -542,28 +552,32 @@ export default function Home() {
       window.removeEventListener('dragleave', handleDragLeave);
       window.removeEventListener('drop', handleDrop);
     };
-  }, []);
+  }, [user]);
 
-  const fetchSongs = async () => {
+  const createPrivateUrl = async (path: string | null) => {
+    if (!path) return '';
+    const { data, error } = await supabase.storage.from('media').createSignedUrl(path, 60 * 60 * 24);
+    if (error) throw error;
+    return data.signedUrl;
+  };
+
+  const fetchSongs = async (userId = user?.id) => {
+    if (!userId) return;
     try {
-      const { data, error } = await supabase.from('songs').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       if (data) {
-        const currentEmail = user?.email?.trim().toLowerCase() || 'ilias.mouatacim@gmail.com';
-        const currentUserId = user?.id || null;
-
-        // ACCCOUNT OWNERSHIP ISOLATION:
-        // Master account ilias.mouatacim@gmail.com accesses existing library & uploaded tracks.
-        // Other accounts only access songs uploaded under their email/id.
-        const userFiltered = data.filter((s: Song) => {
-          if (currentEmail === 'ilias.mouatacim@gmail.com') {
-            return !s.user_email || s.user_email === 'ilias.mouatacim@gmail.com' || s.user_id === currentUserId;
-          }
-          return s.user_email === currentEmail || (currentUserId && s.user_id === currentUserId);
-        });
-
-        setSongs(userFiltered);
-        const likedIds = userFiltered.filter((s: Song) => s.is_liked).map((s: Song) => s.id);
+        const privateSongs = await Promise.all(data.map(async (song: Song) => ({
+          ...song,
+          url: await createPrivateUrl(song.url),
+          cover_url: await createPrivateUrl(song.cover_url),
+        })));
+        setSongs(privateSongs);
+        const likedIds = privateSongs.filter((s: Song) => s.is_liked).map((s: Song) => s.id);
         setLikedSongIds(likedIds);
       }
     } catch (e) {
@@ -573,6 +587,7 @@ export default function Home() {
 
   const toggleLike = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    if (!user) return;
     const isCurrentlyLiked = likedSongIds.includes(id);
     const newLikedState = !isCurrentlyLiked;
 
@@ -584,13 +599,14 @@ export default function Home() {
     );
 
     try {
-      await supabase.from('songs').update({ is_liked: newLikedState }).eq('id', id);
+      await supabase.from('songs').update({ is_liked: newLikedState }).eq('id', id).eq('user_id', user.id);
     } catch (err) {
       console.error("Failed to update like status in Supabase", err);
     }
   };
 
   const playSong = async (song: Song) => {
+    if (!user || song.user_id !== user.id) return;
     if (currentSong?.id === song.id) {
       togglePlay();
       return;
@@ -611,7 +627,7 @@ export default function Home() {
     );
 
     try {
-      await supabase.from('songs').update({ plays: updatedPlays }).eq('id', song.id);
+      await supabase.from('songs').update({ plays: updatedPlays }).eq('id', song.id).eq('user_id', user.id);
     } catch (err) {
       console.error("Failed to update play count in Supabase", err);
     }
@@ -916,7 +932,7 @@ export default function Home() {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '0.5rem' }}>
                 <div className={styles.navLabel}>YOUR PLAYLISTS</div>
                 <button 
-                  onClick={() => setIsPlaylistModalOpen(true)}
+                  onClick={() => requireAccount(() => setIsPlaylistModalOpen(true))}
                   style={{ background: 'none', border: 'none', color: 'var(--neon-cyan)', cursor: 'pointer', padding: '2px' }}
                   title="Create New Playlist"
                 >
@@ -953,14 +969,14 @@ export default function Home() {
             <div className={styles.userProfileCard} onClick={() => setIsAuthModalOpen(true)}>
               <div className={styles.userAvatarWrap}>
                 {user ? (user.user_metadata?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "I") : <UserIcon size={20} />}
-                <div className={styles.userAvatarBadge}></div>
+                {user && <div className={styles.userAvatarBadge}></div>}
               </div>
               <div className={styles.userInfo}>
                 <div className={styles.userName}>
                   {user ? (user.user_metadata?.username || user.email?.split('@')[0]) : "Guest User"}
                 </div>
                 <div className={styles.userRole}>
-                  <Crown size={12} /> {user?.email === 'ilias.mouatacim@gmail.com' ? "Personal account" : user ? "Personal account" : "Click to Sign In"}
+                  <Crown size={12} /> {user ? "Private account" : "Sign in required"}
                 </div>
               </div>
               {user && (
@@ -977,7 +993,7 @@ export default function Home() {
             <button 
               className="btn-neon" 
               style={{ width: '100%', marginTop: '0.25rem', fontSize: '0.8rem', padding: '0.6rem 1rem' }} 
-              onClick={() => setIsModalOpen(true)}
+              onClick={openUpload}
             >
               <Upload size={16} /> Upload Track
             </button>
@@ -997,7 +1013,7 @@ export default function Home() {
                 <button className="btn-cyber-outline" style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem' }} onClick={() => setIsVisualizerOpen(true)}>
                   <Sparkles size={14} style={{ color: 'var(--neon-pink)' }} /> Studio
                 </button>
-                <button className="btn-neon" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} onClick={() => setIsModalOpen(true)}>
+                <button className="btn-neon" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }} onClick={openUpload}>
                   <Plus size={14} /> Add
                 </button>
               </div>
@@ -1017,7 +1033,7 @@ export default function Home() {
             <div className={styles.topActions}>
               <button 
                 className={isPartyMode ? "btn-neon" : "btn-cyber-outline"} 
-                onClick={() => setIsPartyMode(!isPartyMode)}
+                onClick={() => requireAccount(() => setIsPartyMode(!isPartyMode))}
                 style={{ 
                   fontSize: '0.8rem', 
                   padding: '0.45rem 0.85rem',
@@ -1053,7 +1069,7 @@ export default function Home() {
 
               <button 
                 className="btn-neon" 
-                onClick={() => setIsModalOpen(true)}
+                onClick={openUpload}
                 style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
               >
                 <Plus size={15} /> Add Track
@@ -1074,7 +1090,7 @@ export default function Home() {
                 <span className={styles.featureBadge}><span /> THE PERSONAL COLLECTION</span>
                 <h2>Your world.<br />On repeat.</h2>
                 <p>{activeFeaturedSong ? `${activeFeaturedSong.title} — ${activeFeaturedSong.artist}` : 'The deep cuts. The late nights. The songs that feel like you.'}</p>
-                <button className="btn-neon" onClick={() => activeFeaturedSong ? playSong(activeFeaturedSong) : setIsModalOpen(true)}><Play size={16} fill="currentColor" />{activeFeaturedSong ? 'Start listening' : 'Build your collection'}</button>
+                <button className="btn-neon" onClick={() => activeFeaturedSong ? playSong(activeFeaturedSong) : openUpload()}><Play size={16} fill="currentColor" />{activeFeaturedSong ? 'Start listening' : user ? 'Build your collection' : 'Create your account'}</button>
               </div>
               <div className={styles.heroFootnote}><span>NO ALGORITHM. JUST YOU.</span><span>33⅓ RPM</span></div>
             </div>
@@ -1163,7 +1179,7 @@ export default function Home() {
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
                   {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Bring your favorite audio files. Make this space your own."}
                 </p>
-                <button className="btn-neon" onClick={() => setIsModalOpen(true)}>
+                <button className="btn-neon" onClick={openUpload}>
                   <Plus size={16} /> Add your first track
                 </button>
               </div>
@@ -1281,7 +1297,7 @@ export default function Home() {
 
       {!currentSong && <div className={`${styles.cyberPlayer} ${styles.idlePlayer}`}>
         <div className={styles.idleTrack}><div className={styles.idleArt}><Music size={23} /></div><div><strong>Your next obsession awaits</strong><span>Pick a track and make yourself at home.</span></div></div>
-        <div className={styles.idleControls}><div><Shuffle size={16} /><SkipBack size={18} /><button aria-label="Add music to start listening" onClick={() => setIsModalOpen(true)}><Play size={18} fill="currentColor" /></button><SkipForward size={18} /><Repeat size={16} /></div><span>0:00 <i /> 0:00</span></div>
+        <div className={styles.idleControls}><div><Shuffle size={16} /><SkipBack size={18} /><button aria-label="Add music to start listening" onClick={openUpload}><Play size={18} fill="currentColor" /></button><SkipForward size={18} /><Repeat size={16} /></div><span>0:00 <i /> 0:00</span></div>
         <div className={styles.idleQuality}><span /> YOUR MUSIC, FULL FIDELITY <Volume2 size={19} /></div>
       </div>}
 
@@ -1546,7 +1562,7 @@ export default function Home() {
                   <button 
                     className="btn-cyber-outline" 
                     style={{ flex: 1, fontSize: '0.8rem', padding: '0.55rem' }} 
-                    onClick={() => { setIsMobilePlayerExpanded(false); setIsModalOpen(true); }}
+                    onClick={() => { setIsMobilePlayerExpanded(false); openUpload(); }}
                   >
                     <Upload size={16} style={{ color: 'var(--neon-amber)' }} /> Upload
                   </button>
@@ -1563,7 +1579,7 @@ export default function Home() {
           <div className={styles.modalWindow} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHead}>
               <h3 className="gradient-text-flashy">
-                {user ? "Your Private 999 Account" : authMode === 'signin' ? "Sign In to Apollo" : "Create Private Account"}
+                {user ? "Your private account" : authMode === 'signin' ? "Sign in to Apollo" : "Create your private account"}
               </h3>
               <button aria-label="Close dialog" className="btn-cyber-outline" style={{ padding: '0.4rem' }} onClick={() => setIsAuthModalOpen(false)}>
                 <X size={18} />
@@ -1583,14 +1599,12 @@ export default function Home() {
                   </h4>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{user.email}</p>
                   <span style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.72rem', background: 'rgba(0, 240, 255, 0.15)', color: 'var(--neon-cyan)', padding: '0.2rem 0.75rem', borderRadius: '12px', border: '1px solid rgba(0, 240, 255, 0.3)' }}>
-                    {user.email === 'ilias.mouatacim@gmail.com' ? '👑 Master Owner (All Songs Access)' : '🔐 Private Account Vault Active'}
+                    🔐 Private account active
                   </span>
                 </div>
 
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  {user.email === 'ilias.mouatacim@gmail.com' 
-                    ? "You are logged in as Master Owner (ilias.mouatacim@gmail.com). You have exclusive access to all existing uploaded songs & discography."
-                    : "Your uploaded songs are completely private to your account. No other user can see or access your songs."}
+                  Your uploads and library are private to this account. Other users cannot see or access them.
                 </p>
 
                 <button 
@@ -1627,8 +1641,9 @@ export default function Home() {
                 <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp}>
                   {authMode === 'signup' && (
                     <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Username</label>
+                      <label htmlFor="auth-username" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Username</label>
                       <input 
+                        id="auth-username"
                         type="text" 
                         className="input-cyber" 
                         placeholder="e.g. Juice999" 
@@ -1640,31 +1655,36 @@ export default function Home() {
                   )}
 
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Email Address</label>
+                    <label htmlFor="auth-email" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Email Address</label>
                     <input 
+                      id="auth-email"
                       type="email" 
                       className="input-cyber" 
                       placeholder="you@domain.com" 
                       value={authEmail}
                       onChange={(e) => setAuthEmail(e.target.value)}
+                      autoComplete="email"
                       required
                     />
                   </div>
 
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Password</label>
+                    <label htmlFor="auth-password" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase' }}>Password</label>
                     <input 
+                      id="auth-password"
                       type="password" 
                       className="input-cyber" 
                       placeholder="••••••••••••" 
                       value={authPassword}
                       onChange={(e) => setAuthPassword(e.target.value)}
+                      minLength={8}
+                      autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
                       required
                     />
                   </div>
 
                   <button type="submit" className="btn-neon" style={{ width: '100%' }} disabled={authLoading}>
-                    {authLoading ? "Authenticating..." : authMode === 'signin' ? "Sign In to Account" : "Create Private Account"}
+                    {authLoading ? "Authenticating..." : authMode === 'signin' ? "Sign in" : "Create private account"}
                   </button>
                 </form>
               </div>
@@ -1992,7 +2012,7 @@ export default function Home() {
 
         <button 
           className={styles.mobileNavItem}
-          onClick={() => setIsModalOpen(true)}
+          onClick={openUpload}
         >
           <Upload size={20} style={{ color: 'var(--neon-amber)' }} />
           <span>Upload</span>
@@ -2000,7 +2020,7 @@ export default function Home() {
       </nav>
 
       {/* Upload Modal */}
-      {isModalOpen && (
+      {isModalOpen && user && (
         <UploadModal 
           initialFiles={droppedFiles}
           user={user}
@@ -2043,7 +2063,7 @@ function UploadModal({
   onSuccess 
 }: { 
   initialFiles?: File[],
-  user?: any,
+  user: any,
   onClose: () => void, 
   onSuccess: () => void 
 }) {
@@ -2102,6 +2122,12 @@ function UploadModal({
 
   const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user || authData.user.id !== user.id) {
+      alert("Your session has expired. Please sign in again before uploading.");
+      onClose();
+      return;
+    }
     if (files.length === 0) return alert("Please select one or more audio files (.mp3 / .wav)");
     
     const formData = new FormData(e.currentTarget);
@@ -2117,15 +2143,13 @@ function UploadModal({
       let globalCoverUrl = null;
       if (cover) {
         const cleanCoverName = sanitizeStorageKey(cover.name);
-        const coverPath = `covers/${Date.now()}-global-${cleanCoverName}`;
+        const coverPath = `${user.id}/covers/${Date.now()}-global-${cleanCoverName}`;
         const { error: coverError } = await supabase.storage
           .from('media')
           .upload(coverPath, cover, { upsert: true });
           
-        if (!coverError) {
-          const { data: coverUrlData } = supabase.storage.from('media').getPublicUrl(coverPath);
-          globalCoverUrl = coverUrlData.publicUrl;
-        }
+        if (coverError) throw coverError;
+        globalCoverUrl = coverPath;
       }
 
       let completedCount = 0;
@@ -2134,7 +2158,7 @@ function UploadModal({
       const processTrack = async (item: ParsedTrackItem, i: number) => {
         try {
           const cleanFileName = sanitizeStorageKey(item.file.name);
-          const musicPath = `music/${Date.now()}-${i}-${cleanFileName}`;
+          const musicPath = `${user.id}/music/${Date.now()}-${i}-${cleanFileName}`;
           
           const { error: musicError } = await supabase.storage
             .from('media')
@@ -2145,19 +2169,16 @@ function UploadModal({
             return null;
           }
           
-          const { data: { publicUrl: musicUrl } } = supabase.storage.from('media').getPublicUrl(musicPath);
-
           let trackCoverUrl = globalCoverUrl;
           if (item.coverBlob) {
             try {
-              const coverPath = `covers/${Date.now()}-${i}-embedded.jpg`;
+              const coverPath = `${user.id}/covers/${Date.now()}-${i}-embedded.jpg`;
               const { error: itemCoverErr } = await supabase.storage
                 .from('media')
                 .upload(coverPath, item.coverBlob, { contentType: item.coverBlob.type || 'image/jpeg', upsert: true });
               
               if (!itemCoverErr) {
-                const { data: itemCoverData } = supabase.storage.from('media').getPublicUrl(coverPath);
-                trackCoverUrl = itemCoverData.publicUrl;
+                trackCoverUrl = coverPath;
               }
             } catch (err) {
               console.warn("Failed to upload embedded cover for track:", item.title, err);
@@ -2181,10 +2202,10 @@ function UploadModal({
             artist: finalArtist,
             album: finalAlbum,
             year: finalYear,
-            url: musicUrl,
+            url: musicPath,
             cover_url: trackCoverUrl,
-            user_email: user?.email || 'ilias.mouatacim@gmail.com',
-            user_id: user?.id || null
+            user_email: user.email,
+            user_id: user.id
           };
         } catch (err) {
           console.error("Track upload failed:", item.title, err);
@@ -2207,7 +2228,7 @@ function UploadModal({
         url: string;
         cover_url: string | null;
         user_email: string;
-        user_id: string | null;
+        user_id: string;
       }> = [];
 
       const worker = async () => {
