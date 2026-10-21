@@ -40,6 +40,7 @@ type Playlist = {
 
 export default function Home() {
   const [songs, setSongs] = useState<Song[]>([]);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -556,13 +557,18 @@ export default function Home() {
 
   const createPrivateUrl = async (path: string | null) => {
     if (!path) return '';
+    if (/^https?:\/\//i.test(path)) return path;
     const { data, error } = await supabase.storage.from('media').createSignedUrl(path, 60 * 60 * 24);
-    if (error) throw error;
+    if (error) {
+      console.error(`Could not create a private media URL for ${path}:`, error.message);
+      return '';
+    }
     return data.signedUrl;
   };
 
   const fetchSongs = async (userId = user?.id) => {
     if (!userId) return;
+    setLibraryError(null);
     try {
       const { data, error } = await supabase
         .from('songs')
@@ -582,6 +588,9 @@ export default function Home() {
       }
     } catch (e) {
       console.error("Failed to fetch songs from Supabase", e);
+      setSongs([]);
+      setLikedSongIds([]);
+      setLibraryError(e instanceof Error ? e.message : 'Your library could not be loaded.');
     }
   };
 
@@ -1174,13 +1183,13 @@ export default function Home() {
               <div className={styles.libraryEmpty}>
                 <div className={styles.emptyRecord}><Music size={25} /></div>
                 <h3 className="gradient-text-flashy" style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>
-                  {activeTab === 'favorites' ? "Keep your favorites close." : searchQuery || vibeFilter !== 'all' || activePlaylistId ? "Nothing here. Yet." : "Every collection starts with a track."}
+                  {libraryError ? "We couldn’t load your library." : activeTab === 'favorites' ? "Keep your favorites close." : searchQuery || vibeFilter !== 'all' || activePlaylistId ? "Nothing here. Yet." : "Every collection starts with a track."}
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                  {activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Bring your favorite audio files. Make this space your own."}
+                  {libraryError || (activeTab === 'favorites' ? "Click the heart icon on any song to add it to your favorites." : "Bring your favorite audio files. Make this space your own.")}
                 </p>
-                <button className="btn-neon" onClick={openUpload}>
-                  <Plus size={16} /> Add your first track
+                <button className="btn-neon" onClick={() => libraryError && user ? fetchSongs(user.id) : openUpload()}>
+                  {libraryError ? <RotateCw size={16} /> : <Plus size={16} />} {libraryError ? 'Try again' : 'Add your first track'}
                 </button>
               </div>
             ) : viewMode === 'list' ? (
