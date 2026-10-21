@@ -1,4 +1,4 @@
-const CACHE_NAME = 'apollo-999-cache-v1';
+const CACHE_NAME = 'apollo-999-cache-v2';
 
 const urlsToCache = [
   '/',
@@ -16,20 +16,10 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Cache-first strategy for audio files
-  if (event.request.destination === 'audio' || event.request.url.includes('.mp3') || event.request.url.includes('.wav')) {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) return cachedResponse;
-        return fetch(event.request).then((response) => {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        });
-      })
-    );
+  // Let the browser fetch private media directly. Native handling preserves
+  // byte-range requests used by mobile background and lock-screen playback,
+  // and avoids retaining signed, user-specific files in the app cache.
+  if (event.request.destination === 'audio' || event.request.headers.has('range')) {
     return;
   }
 

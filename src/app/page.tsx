@@ -270,6 +270,9 @@ export default function Home() {
   // Web Audio API Setup
   const initWebAudio = () => {
     if (audioContextRef.current || !audioRef.current) return;
+    // iOS and Android may suspend Web Audio when the screen locks. Keep the
+    // native media pipeline on touch-first phones so playback can continue.
+    if (window.matchMedia('(pointer: coarse)').matches) return;
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const ctx = new AudioCtx();
@@ -308,6 +311,17 @@ export default function Home() {
       console.warn("Web Audio API node connection notice:", err);
     }
   };
+
+  // Keep regular playback on the native media element so mobile operating
+  // systems can continue it while Apollo is backgrounded or the screen locks.
+  // The Web Audio graph is only needed while the sound studio is in use.
+  useEffect(() => {
+    if (!isVisualizerOpen) return;
+    initWebAudio();
+    if (audioContextRef.current?.state === 'suspended' && !audioRef.current?.paused) {
+      audioContextRef.current.resume().catch(() => undefined);
+    }
+  }, [isVisualizerOpen]);
 
   // Sync EQ Gains to Audio Nodes
   useEffect(() => {
@@ -621,14 +635,7 @@ export default function Home() {
       return;
     }
 
-    initWebAudio();
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
-    }
-
     setCurrentSong(song);
-    setIsPlaying(true);
-    broadcastPlaybackState(true, song);
 
     const updatedPlays = (song.plays || 0) + 1;
     setSongs(prev =>
@@ -643,25 +650,26 @@ export default function Home() {
 
     if (audioRef.current) {
       audioRef.current.src = song.url;
-      audioRef.current.play();
+      audioRef.current.load();
+      try {
+        await audioRef.current.play();
+      } catch (err) {
+        setIsPlaying(false);
+        console.warn("Playback could not start", err);
+      }
     }
   };
 
   const togglePlay = () => {
     if (!audioRef.current || !currentSong) return;
-    initWebAudio();
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
-    }
-
-    if (isPlaying) {
+    if (!audioRef.current.paused) {
       audioRef.current.pause();
-      broadcastPlaybackState(false);
     } else {
-      audioRef.current.play();
-      broadcastPlaybackState(true);
+      audioRef.current.play().catch((err) => {
+        setIsPlaying(false);
+        console.warn("Playback could not resume", err);
+      });
     }
-    setIsPlaying(!isPlaying);
   };
 
   const addToQueue = (song: Song, e?: React.MouseEvent) => {
@@ -740,22 +748,31 @@ export default function Home() {
         });
 
         navigator.mediaSession.setActionHandler('play', () => {
-          audioRef.current?.play();
-          setIsPlaying(true);
+          audioRef.current?.play().catch(() => setIsPlaying(false));
         });
         navigator.mediaSession.setActionHandler('pause', () => {
           audioRef.current?.pause();
-          setIsPlaying(false);
         });
         navigator.mediaSession.setActionHandler('previoustrack', prevSong);
         navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-
-        try {
-          navigator.mediaSession.setActionHandler('seekbackward', null);
-        } catch (e) {}
-        try {
-          navigator.mediaSession.setActionHandler('seekforward', null);
-        } catch (e) {}
+        navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+          if (!audioRef.current) return;
+          audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - (details.seekOffset || 10));
+        });
+        navigator.mediaSession.setActionHandler('seekforward', (details) => {
+          if (!audioRef.current) return;
+          const target = audioRef.current.currentTime + (details.seekOffset || 10);
+          audioRef.current.currentTime = Math.min(audioRef.current.duration || target, target);
+        });
+        navigator.mediaSession.setActionHandler('seekto', (details) => {
+          if (!audioRef.current || details.seekTime == null) return;
+          audioRef.current.currentTime = details.seekTime;
+        });
+        navigator.mediaSession.setActionHandler('stop', () => {
+          if (!audioRef.current) return;
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        });
       } catch (err) {
         console.warn("MediaSession error", err);
       }
@@ -803,6 +820,18 @@ export default function Home() {
         } catch (e) {}
       }
     }
+  };
+
+  const handleAudioPlay = () => {
+    setIsPlaying(true);
+    broadcastPlaybackState(true);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+  };
+
+  const handleAudioPause = () => {
+    setIsPlaying(false);
+    broadcastPlaybackState(false);
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -2046,8 +2075,12 @@ export default function Home() {
       )}
 
       <audio 
-        ref={audioRef} 
-        onTimeUpdate={handleTimeUpdate} 
+        ref={audioRef}
+        preload="auto"
+        playsInline
+        onPlay={handleAudioPlay}
+        onPause={handleAudioPause}
+        onTimeUpdate={handleTimeUpdate}
         onEnded={nextSong}
         crossOrigin="anonymous"
       />
